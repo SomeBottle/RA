@@ -1,0 +1,69 @@
+body {
+    margin: 0;
+}
+.loadingText{
+    position:absolute;
+    z-index:-1;
+    left:50%;
+    top:50%;
+    font-size: 2em;
+    color: rgb(117, 117, 117);
+    transform: translate(-50%,-50%);
+}
+
+.basicView {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    flex-direction: row;
+    transition:.5s ease;
+}
+
+.relationContainer {
+    flex: 1;
+    background-color: rgb(198, 228, 255);
+}
+
+.algebraContainer {
+    flex: 1;
+    background-color: #FFF;
+}
+
+.menu {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    padding: .5em .7em;
+}
+
+.menu a {
+    color: rgb(82, 82, 82);
+}
+
+.notice {
+    position: fixed;
+    z-index:200;
+    width: 100%;
+    left: 0;
+    top: 0;
+    background-color: rgb(58, 137, 255);
+    color: #FFF;
+    text-align: center;
+    transform: translateY(-100%);
+    transition: .5s ease;
+}
+
+.notice span {
+    display: block;
+    padding: 1em .5em;
+    font-size: 1.5em;
+    float:left;
+}
+
+.notice a {
+    display: block;
+    padding: 1em .5em;
+    font-size: 1.5em;
+    float: right;
+    color:#FFF;
+}
