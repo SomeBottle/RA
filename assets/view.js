@@ -8,6 +8,10 @@ String.prototype.exactTp = function () {
 String.prototype.findTp = function () {
     return this.match(new RegExp('\\{\\[(\\S*)\\]\\}', 'gi'));
 }
+/*在字符串原型链上加个替换模板占位符的方法*/
+String.prototype.replaceTp = function (from, to) {
+    return this.replace(new RegExp('\\{\\[' + from + '\\]\\}', 'gi'), to);
+}
 var basicView = {
     langList: {},
     currentLang: {},
@@ -81,8 +85,12 @@ var basicView = {
                 for (var i in matches) {
                     /*获得模板占位名*/
                     let theHolder = matches[i].exactTp();
-
+                    /*如果在语言配置文件中有对应翻译，就替换上，反之就是缺失翻译，保留类似menu.howToUse的占位字串*/
+                    basicViewTemplate = basicViewTemplate.replaceTp(theHolder, viewLang[theHolder] || theHolder);
                 }
+                /*重渲染翻译后的外观*/
+                basicView.innerHTML=basicViewTemplate;
+                basicView.style.opacity=1;
             })
             .catch(error => {
                 bv.notice('Language config load failed.Please contact SomeBottle', true);

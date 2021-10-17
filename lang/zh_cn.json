@@ -1,5 +1,7 @@
 {
     "theView":{
-        
+        "menu.howToUse":"如何使用",
+        "menu.language":"语言(Language)",
+        "menu.example":"范例"
     }
 }
