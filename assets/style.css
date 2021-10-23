@@ -7,7 +7,9 @@ body {
     z-index: -1;
     left: 50%;
     top: 50%;
-    font-size: 2em;
+    width: 100%;
+    text-align: center;
+    font-size: 1.5em;
     color: rgb(117, 117, 117);
     transform: translate(-50%, -50%);
 }
@@ -67,6 +69,54 @@ body {
     font-size: 1.5em;
     float: right;
     color: #FFF;
+}
+
+.floatLayer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    min-height: 100%;
+    z-index: -1;
+    background-color: #FFF;
+    transition: .5s ease;
+}
+
+.floatLayer .close {
+    display: block;
+    position: absolute;
+    z-index: 51;
+    right: 0;
+    top: 0;
+    text-decoration: none;
+    color: black;
+    margin: .5em;
+    font-size: 2em;
+    line-height: .5em;
+}
+
+.floatContent {
+    position: relative;
+    margin: 1em;
+    max-width: 100%;
+}
+
+.floatContent p,
+.floatContent h1 {
+    margin: .5em 0;
+}
+
+.floatContent img {
+    max-width: 100%;
+}
+
+.floatContent a {
+    color: #1090ff;
+    text-decoration: none;
+}
+
+.floatContent a:hover {
+    text-decoration: underline;
 }
 
 @media screen and (max-width: 600px) {

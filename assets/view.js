@@ -1,5 +1,5 @@
 'use strict';
-var s = (selector) => document.querySelector(selector);/*简化一下选择器*/
+var s = (selector, all = false) => all ? document.querySelectorAll(selector) : document.querySelector(selector);/*简化一下选择器*/
 /*在字符串原型链上加个提取模板占位名的方法*/
 String.prototype.exactTp = function () {
     return this.replace('{[', '').replace(']}', '');
@@ -16,6 +16,7 @@ var basicView = {
     langList: {},
     currentLang: {},
     originalTemplates: '',
+    loadedPages: {},
     motionChecker: function (element, func, checkAnim = false) {/*CSS3运动结束监听回调器(监听元素,回调函数,监听的是不是css3Animation)*/
         let chosenTester = '', testers = checkAnim ? {
             'animation': 'animationend',
@@ -73,6 +74,10 @@ var basicView = {
                 console.log('Choose Language:' + bv.langList[chosenLang]);
                 return fetch('./lang/' + chosenLang + '.json');
             })
+            .catch(error => {
+                bv.notice('Language config load failed.Please contact SomeBottle', true);
+                console.error(error);
+            })
             .then((langResp) => langResp.json())
             .then((langResp) => {
                 let basicView = s('.basicView'), basicViewTemplate = bv.originalTemplates || basicView.innerHTML;
@@ -89,12 +94,42 @@ var basicView = {
                     basicViewTemplate = basicViewTemplate.replaceTp(theHolder, viewLang[theHolder] || theHolder);
                 }
                 /*重渲染翻译后的外观*/
-                basicView.innerHTML=basicViewTemplate;
-                basicView.style.opacity=1;
+                basicView.innerHTML = basicViewTemplate;
+                basicView.style.opacity = 1;
+                /*初始化菜单，使点击事件与浮页关联*/
+                let menuLinks = s('.menu a', true);
+                for (i in menuLinks) {
+                    let e = menuLinks[i], attr = (typeof e == 'object' ? e.getAttribute('data-src') : null);
+                    if (attr) e.addEventListener('click', () => bv.float(attr), false);
+                }
             })
-            .catch(error => {
-                bv.notice('Language config load failed.Please contact SomeBottle', true);
-                console.error(error);
-            })
+    },
+    float: function (page) {
+        let fl = s('.floatLayer'), fc = s('.floatContent'), bv = this, localPage = bv.loadedPages[page];
+        if (localPage) {
+            fc.innerHTML = localPage;
+            fl.style.zIndex = 50;
+            fl.style.opacity = 1;
+        } else {
+            fetch('./' + page + '.html')
+                .then((resp) => resp.text())
+                .then((resp) => {
+                    fc.innerHTML = resp;
+                    bv.loadedPages[page] = resp;
+                    fl.style.zIndex = 50;
+                    fl.style.opacity = 1;
+                })
+                .catch(error => {
+                    bv.notice('Float page load failed', true);
+                    console.error(error);
+                })
+        }
+    },
+    closeFloat: function () {
+        let fl = s('.floatLayer'), bv = this;
+        fl.style.opacity = 0;
+        bv.motionChecker(fl, () => {
+            fl.style.zIndex = -1;
+        });
     }
 }

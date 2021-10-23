@@ -12,8 +12,11 @@
         <div class="relationContainer"></div>
         <div class="algebraContainer"></div>
         <div class="menu">
-            <a href="javascript:void(0);">{[menu.howToUse]}</a> | <a href="javascript:void(0);">{[menu.language]}</a> | <a href="javascript:void(0);">{[menu.example]}</a>
+            <a href="javascript:void(0);" data-src="how2use">{[menu.howToUse]}</a> | <a href="javascript:void(0);">{[menu.language]}</a> | <a href="javascript:void(0);">{[menu.example]}</a>
         </div>
+    </div>
+    <div class="floatLayer" style="opacity: 0;"><a class="close" href="javascript:void(0);" onclick="basicView.closeFloat()">×</a>
+        <div class="floatContent"></div>
     </div>
     <div class="loadingText">Loading(°ー°〃)</div>
     <div class="notice"><span>Language config load error.</span><a href="javascript:void(0);" onclick="basicView.closeNotice()">OK!</a></div>
