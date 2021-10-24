@@ -132,4 +132,10 @@ var basicView = {
             fl.style.zIndex = -1;
         });
     }
-}
+};
+
+var tableView = {
+    all: function () {/*查看所有的表*/
+        basicView.float("tableView");
+    }
+};

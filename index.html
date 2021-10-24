@@ -9,7 +9,16 @@
 
 <body>
     <div class="basicView" style="opacity:0">
-        <div class="relationContainer"></div>
+        <div class="relationContainer">
+            <div class="formInput">
+                <textarea id="editForm" placeholder="{[relation.enterHere]}"></textarea>
+            </div>
+            <input class='formNameInput' type="text" placeholder="{[relation.enterNameHere]}"></input>
+            <div class="footBtn">
+                <a class="add" href="javascript:void(0);">{[relation.add]}</a>
+                <a class="view" href="javascript:void(0);" onclick="tableView.all()">{[relation.view]}</a>
+            </div>
+        </div>
         <div class="algebraContainer"></div>
         <div class="menu">
             <a href="javascript:void(0);" data-src="how2use">{[menu.howToUse]}</a> | <a href="javascript:void(0);">{[menu.language]}</a> | <a href="javascript:void(0);">{[menu.example]}</a>
@@ -17,6 +26,9 @@
     </div>
     <div class="floatLayer" style="opacity: 0;"><a class="close" href="javascript:void(0);" onclick="basicView.closeFloat()">×</a>
         <div class="floatContent"></div>
+    </div>
+    <div class="tableLayer" style="opacity: 0;"><a class="close" href="javascript:void(0);" onclick="">×</a>
+        <div class="tableContent"></div>
     </div>
     <div class="loadingText">Loading(°ー°〃)</div>
     <div class="notice"><span>Language config load error.</span><a href="javascript:void(0);" onclick="basicView.closeNotice()">OK!</a></div>
