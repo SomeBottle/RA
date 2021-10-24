@@ -63,7 +63,7 @@ var basicView = {
     init: function () {
         /*最先拉取语言*/
         let bv = this;
-        fetch('./lang/index.json')
+        fetch('./langs/index.json')
             .then((resp) => resp.json())
             .then((resp) => {
                 localStorage.RAchosenLang = localStorage.RAchosenLang || resp.defaultLang;
@@ -72,7 +72,7 @@ var basicView = {
                 /*选定语言*/
                 let chosenLang = localStorage.RAchosenLang;
                 console.log('Choose Language:' + bv.langList[chosenLang]);
-                return fetch('./lang/' + chosenLang + '.json');
+                return fetch('./langs/' + chosenLang + '.json');
             })
             .catch(error => {
                 bv.notice('Language config load failed.Please contact SomeBottle', true);
@@ -90,6 +90,7 @@ var basicView = {
                 for (var i in matches) {
                     /*获得模板占位名*/
                     let theHolder = matches[i].exactTp();
+                    console.log(theHolder);
                     /*如果在语言配置文件中有对应翻译，就替换上，反之就是缺失翻译，保留类似menu.howToUse的占位字串*/
                     basicViewTemplate = basicViewTemplate.replaceTp(theHolder, viewLang[theHolder] || theHolder);
                 }
@@ -111,7 +112,7 @@ var basicView = {
             fl.style.zIndex = 50;
             fl.style.opacity = 1;
         } else {
-            fetch('./' + page + '.html')
+            fetch('./pages/' + page + '.html')
                 .then((resp) => resp.text())
                 .then((resp) => {
                     fc.innerHTML = resp;

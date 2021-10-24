@@ -160,7 +160,7 @@ body {
 .floatLayer .close,
 .tableLayer .close {
     display: block;
-    position: absolute;
+    position: fixed;
     z-index: 51;
     right: 0;
     top: 0;
@@ -198,6 +198,37 @@ body {
 
 .floatContent a:hover {
     text-decoration: underline;
+}
+
+.singleThumb {
+    display: inline-block;
+    width: 12em;
+    max-width: 100%;
+    background-color: rgb(255, 236, 212);
+    border-radius: .4em;
+    padding: .4em;
+    margin: 0 1em 1em 0;
+    transition: 1s ease;
+}
+
+.singleThumb:hover {
+    background-color: rgb(255, 221, 180);
+}
+
+.singleThumb a {
+    display: block;
+    word-break: break-all;
+    height: 8em;
+    overflow-y: hidden;
+    text-overflow: ellipsis;
+    text-decoration: underline;
+    color: #515151;
+}
+
+.singleThumb span {
+    font-size: 1.5em;
+    display: block;
+    word-break: break-all;
 }
 
 @media screen and (max-width: 600px) {
