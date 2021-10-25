@@ -1,12 +1,8 @@
 'use strict';
 var s = (selector, all = false) => all ? document.querySelectorAll(selector) : document.querySelector(selector);/*简化一下选择器*/
-/*在字符串原型链上加个提取模板占位名的方法*/
-String.prototype.exactTp = function () {
-    return this.replace('{[', '').replace(']}', '');
-}
 /*在字符串原型链上加个寻找模板占位符的方法*/
 String.prototype.findTp = function () {
-    return this.match(new RegExp('\\{\\[(\\S*)\\]\\}', 'gi'));
+    return this.matchAll(new RegExp('\\{\\[(\\S*?)\\]\\}', 'gi'));/*使用?非贪心模式，防止没有空格的整段被匹配，利用matchAll识别正则分组*/
 }
 /*在字符串原型链上加个替换模板占位符的方法*/
 String.prototype.replaceTp = function (from, to) {
@@ -87,11 +83,9 @@ var basicView = {
                 bv.currentLang = langResp;
                 /*找出所有的替换符号*/
                 let matches = basicViewTemplate.findTp(), viewLang = langResp.theView;
-                for (var i in matches) {
-                    /*获得模板占位名*/
-                    let theHolder = matches[i].exactTp();
-                    console.log(theHolder);
+                for (let single of matches) {
                     /*如果在语言配置文件中有对应翻译，就替换上，反之就是缺失翻译，保留类似menu.howToUse的占位字串*/
+                    let theHolder = single[1];
                     basicViewTemplate = basicViewTemplate.replaceTp(theHolder, viewLang[theHolder] || theHolder);
                 }
                 /*重渲染翻译后的外观*/
@@ -99,7 +93,7 @@ var basicView = {
                 basicView.style.opacity = 1;
                 /*初始化菜单，使点击事件与浮页关联*/
                 let menuLinks = s('.menu a', true);
-                for (i in menuLinks) {
+                for (let i in menuLinks) {
                     let e = menuLinks[i], attr = (typeof e == 'object' ? e.getAttribute('data-src') : null);
                     if (attr) e.addEventListener('click', () => bv.float(attr), false);
                 }
