@@ -56,11 +56,31 @@ var basicView = {
             if (!needConfirm) setTimeout(that.closeNotice, 1500);
         })
     },
+    langRender: function (section, html) {
+        let bv = this, langOBJ = bv.currentLang;
+        /*获得选择的语言对应的配置文件*/
+        /*找出所有的替换符号*/
+        let matches = html.findTp(), viewLang = langOBJ[section];
+        for (let single of matches) {
+            /*如果在语言配置文件中有对应翻译，就替换上，反之就是缺失翻译，保留类似menu.howToUse的占位字串*/
+            let theHolder = single[1];
+            html = html.replaceTp(theHolder, viewLang[theHolder] || theHolder);
+        }
+        /*返回重渲染翻译后html*/
+        return html;
+    },
+    fHook: function (resp) {/*用于判断fetch状态码的一个hook*/
+        if (resp.status == 200) {
+            return resp;
+        } else {
+            throw 'Error response, code:' + resp.status;
+        }
+    },
     init: function () {
         /*最先拉取语言*/
         let bv = this;
         fetch('./langs/index.json')
-            .then((resp) => resp.json())
+            .then((resp) => bv.fHook(resp).json())
             .then((resp) => {
                 localStorage.RAchosenLang = localStorage.RAchosenLang || resp.defaultLang;
                 /*载入语言列表*/
@@ -70,26 +90,17 @@ var basicView = {
                 console.log('Choose Language:' + bv.langList[chosenLang]);
                 return fetch('./langs/' + chosenLang + '.json');
             })
+            .then((langResp) => bv.fHook(langResp).json())
             .catch(error => {
                 bv.notice('Language config load failed.Please contact SomeBottle', true);
-                console.error(error);
+                throw error;
             })
-            .then((langResp) => langResp.json())
             .then((langResp) => {
                 let basicView = s('.basicView'), basicViewTemplate = bv.originalTemplates || basicView.innerHTML;
+                bv.currentLang = langResp;
                 /*储存本来的容器模板，以后还有用*/
                 bv.originalTemplates = basicViewTemplate;
-                /*获得选择的语言对应的配置文件*/
-                bv.currentLang = langResp;
-                /*找出所有的替换符号*/
-                let matches = basicViewTemplate.findTp(), viewLang = langResp.theView;
-                for (let single of matches) {
-                    /*如果在语言配置文件中有对应翻译，就替换上，反之就是缺失翻译，保留类似menu.howToUse的占位字串*/
-                    let theHolder = single[1];
-                    basicViewTemplate = basicViewTemplate.replaceTp(theHolder, viewLang[theHolder] || theHolder);
-                }
-                /*重渲染翻译后的外观*/
-                basicView.innerHTML = basicViewTemplate;
+                basicView.innerHTML = bv.langRender('basicView', basicViewTemplate);
                 basicView.style.opacity = 1;
                 /*初始化菜单，使点击事件与浮页关联*/
                 let menuLinks = s('.menu a', true);
@@ -99,7 +110,7 @@ var basicView = {
                 }
             })
     },
-    float: function (page) {
+    float: function (page, funcOnResp = false) {/*(要载入的页面,对请求返回的html内容进行处理的函数)*/
         let fl = s('.floatLayer'), fc = s('.floatContent'), bv = this, localPage = bv.loadedPages[page];
         if (localPage) {
             fc.innerHTML = localPage;
@@ -107,16 +118,18 @@ var basicView = {
             fl.style.opacity = 1;
         } else {
             fetch('./pages/' + page + '.html')
-                .then((resp) => resp.text())
+                .then((resp) => bv.fHook(resp).text())
+                .catch(error => {
+                    bv.notice('Float page load failed', true);
+                    throw error;
+                })
                 .then((resp) => {
+                    resp = funcOnResp ? funcOnResp(resp) : resp;
                     fc.innerHTML = resp;
                     bv.loadedPages[page] = resp;
                     fl.style.zIndex = 50;
                     fl.style.opacity = 1;
-                })
-                .catch(error => {
-                    bv.notice('Float page load failed', true);
-                    console.error(error);
+                    funcOnResp = null;
                 })
         }
     },
@@ -130,7 +143,34 @@ var basicView = {
 };
 
 var tableView = {
+    tableTemplate: '',
     all: function () {/*查看所有的表*/
-        basicView.float("tableView");
+        let bv = basicView;
+        basicView.float("tableView", (resp) => bv.langRender("tableView", resp));
+    },
+    float: function (html) {
+        let tl = s('.tableLayer'), tc = s('.tableContent');
+        tc.innerHTML = html;
+        tl.style.zIndex = 52;
+        tl.style.opacity = 1;
+    },
+    closeFloat: function () {
+        let tl = s('.tableLayer');
+        tl.style.opacity = 0;
+        basicView.motionChecker(tl, () => {
+            tl.style.zIndex = -1;
+        });
+    },
+    table: async function () {
+        let tv = this,
+            bv = basicView,
+            localTp = tv.tableTemplate,
+            rsTp = Promise.resolve(localTp),
+            tHtml = await (localTp ? rsTp : fetch("./pages/tableDetail.html")
+                .then(resp => bv.fHook(resp).text()).catch((e) => {
+                    bv.notice('Table detail page load failed', true);
+                    throw e;
+                }));
+        tv.tableTemplate = tHtml;
     }
 };

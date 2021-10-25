@@ -202,7 +202,7 @@ body {
 
 .singleThumb {
     display: inline-block;
-    width: 12em;
+    min-width: 14em;
     max-width: 100%;
     background-color: rgb(255, 236, 212);
     border-radius: .4em;
@@ -215,7 +215,7 @@ body {
     background-color: rgb(255, 221, 180);
 }
 
-.singleThumb a {
+.singleThumb .attrs {
     display: block;
     word-break: break-all;
     height: 8em;
@@ -223,16 +223,35 @@ body {
     text-overflow: ellipsis;
     text-decoration: underline;
     color: #515151;
+    max-width: 14em;
+}
+
+.singleThumb .foot {
+    display: flex;
+    align-items: center;
 }
 
 .singleThumb span {
     font-size: 1.5em;
     display: block;
+    flex: 1;
     word-break: break-all;
+    margin-right: 1em;
+}
+
+.singleThumb a {
+    margin: 0 0.25em;
+}
+
+.singleThumb .del {
+    color: #ff4444;
 }
 
 @media screen and (max-width: 600px) {
     .basicView {
         flex-direction: column;
+    }
+    .singleThumb {
+        min-width: 0;
     }
 }

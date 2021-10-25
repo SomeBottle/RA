@@ -1,5 +1,5 @@
 {
-    "theView": {
+    "basicView": {
         "menu.language": "zh_cn",
         "menu.howToUse": "如何使用",
         "menu.selLang": "语言(Language)",
@@ -8,5 +8,9 @@
         "relation.view": "查看",
         "relation.enterHere": "在这里输入关系表(CSV)",
         "relation.enterNameHere": "在这里输入关系名"
+    },
+    "tableView": {
+        "tableList.editCsv": "CSV",
+        "tableList.del": "删除"
     }
 }
