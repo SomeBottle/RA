@@ -110,28 +110,23 @@ var basicView = {
                 }
             })
     },
-    float: function (page, funcOnResp = false) {/*(要载入的页面,对请求返回的html内容进行处理的函数)*/
-        let fl = s('.floatLayer'), fc = s('.floatContent'), bv = this, localPage = bv.loadedPages[page];
-        if (localPage) {
-            fc.innerHTML = localPage;
-            fl.style.zIndex = 50;
-            fl.style.opacity = 1;
-        } else {
-            fetch('./pages/' + page + '.html')
-                .then((resp) => bv.fHook(resp).text())
-                .catch(error => {
+    float: async function (page, funcOnResp = false) {/*(要载入的页面,对请求返回的html内容进行处理的函数)*/
+        let fl = s('.floatLayer'),
+            fc = s('.floatContent'),
+            bv = this,
+            loaded = bv.loadedPages[page],
+            localPage = Promise.resolve(loaded),
+            applyPage = await (loaded ? localPage : fetch('./pages/' + page + '.html')
+                .then((resp) => bv.fHook(resp).text()).catch(e => {
                     bv.notice('Float page load failed', true);
-                    throw error;
-                })
-                .then((resp) => {
-                    resp = funcOnResp ? funcOnResp(resp) : resp;
-                    fc.innerHTML = resp;
-                    bv.loadedPages[page] = resp;
-                    fl.style.zIndex = 50;
-                    fl.style.opacity = 1;
                     funcOnResp = null;
+                    throw e;
                 })
-        }
+            );
+        fc.innerHTML = funcOnResp ? funcOnResp(applyPage) : applyPage;
+        fl.style.zIndex = 50;
+        fl.style.opacity = 1;
+        funcOnResp = null;
     },
     closeFloat: function () {
         let fl = s('.floatLayer'), bv = this;
@@ -170,7 +165,9 @@ var tableView = {
                 .then(resp => bv.fHook(resp).text()).catch((e) => {
                     bv.notice('Table detail page load failed', true);
                     throw e;
-                }));
+                })
+            );
         tv.tableTemplate = tHtml;
+        tv.float(tHtml);
     }
 };
