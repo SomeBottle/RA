@@ -123,6 +123,7 @@ var basicView = {
                     throw e;
                 })
             );
+        bv.loadedPages[page] = applyPage;
         fc.innerHTML = funcOnResp ? funcOnResp(applyPage) : applyPage;
         fl.style.zIndex = 50;
         fl.style.opacity = 1;
@@ -171,3 +172,5 @@ var tableView = {
         tv.float(tHtml);
     }
 };
+/*For temporary test*/
+tableView.table();
