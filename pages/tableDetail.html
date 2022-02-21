@@ -3,21 +3,22 @@
         <tr>
             <th colspan="3">关系: STUDENTS</th>
         </tr>
-    </thead>
-    <tbody>
-        <tr>
+        <tr id="tableColumnName">
             <td>a</td>
             <td>b</td>
             <td>c</td>
         </tr>
+    </thead>
+    <tbody id="tableBody">
         <tr>
-            <td class='val'><a href='javascript:void(0);'>1</a></td>
+            <td class='val'><a href='javascript:void(0);' data-row="1" data-column="1">1</a></td>
             <td>2</td>
             <td>3</td>
         </tr>
     </tbody>
 </table>
 <h2># 修改区</h2>
-<div class='tableMDForm'><input type="text" placeholder="请选择要修改的值" id="modifiedVal" disabled></input><input type="button" value="提交" disabled></input></div>
+<div class='tableMDForm'><input type="text" placeholder="请选择要修改的值" id="modifiedVal" disabled></input><input type="button" value="提交" disabled></input>
+</div>
 <br>
 <p><b>PS: </b>点击关系中的属性值可以在这里进行修改。可以回车提交修改~</p>

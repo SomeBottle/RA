@@ -1,6 +1,15 @@
 body {
     margin: 0;
     background-color: #393939;
+    font-family: Fira Code, Monaco, Consolas, Ubuntu Mono, PingFang SC, Hiragino Sans GB, Microsoft YaHei, WenQuanYi Micro Hei, monospace, sans-serif;
+}
+
+input {
+    font-family: Fira Code, Monaco, Consolas, Ubuntu Mono, PingFang SC, Hiragino Sans GB, Microsoft YaHei, WenQuanYi Micro Hei, monospace, sans-serif;
+}
+
+textarea {
+    font-family: Fira Code, Monaco, Consolas, Ubuntu Mono, PingFang SC, Hiragino Sans GB, Microsoft YaHei, WenQuanYi Micro Hei, monospace, sans-serif;
 }
 
 .loadingText {
@@ -11,7 +20,7 @@ body {
     width: 100%;
     text-align: center;
     font-size: 1.5em;
-    color: rgb(117, 117, 117);
+    color: rgb(213, 213, 213);
     transform: translate(-50%, -50%);
 }
 
@@ -37,7 +46,6 @@ body {
 
 .formInput textarea {
     overflow: auto;
-    font-family: '\5FAE\8F6F\96C5\9ED1';
     color: #e9e9e9;
     background-color: rgb(157, 157, 157);
     text-align: left;
@@ -46,7 +54,7 @@ body {
     height: 100%;
     padding: 1em;
     font-size: 1.2em;
-    outline: 0;
+    outline: none;
     resize: none;
 }
 
@@ -62,6 +70,7 @@ body {
     padding: 0.5em;
     background-color: #6e6e6e;
     color: #c6c6c6;
+    outline: none;
     text-align: center;
 }
 
@@ -171,7 +180,7 @@ body {
     right: 0;
     top: 0;
     text-decoration: none;
-    color: black;
+    color: white;
     margin: .5em;
     font-size: 2em;
     line-height: .5em;
@@ -185,6 +194,7 @@ body {
 .tableContent {
     position: relative;
     margin: 1em;
+    color: #fcfcfc;
     background-color: #4e4e4e;
     max-width: 100%;
 }
@@ -194,7 +204,6 @@ body {
 }
 
 .tableMDForm input[type='text'] {
-    font-family: '\5FAE\8F6F\96C5\9ED1';
     color: #494949;
     text-align: left;
     border: 0;
@@ -224,7 +233,6 @@ body {
 .tableMDForm input[type='button'],
 .tableMDForm input[type='button']:disabled {
     transition: .5s ease;
-    font-family: '\5FAE\8F6F\96C5\9ED1';
     display: inline-block;
     cursor: default;
     -webkit-appearance: none;
@@ -249,7 +257,7 @@ body {
 }
 
 .floatContent a {
-    color: #002f5f;
+    color: #77baff;
     text-decoration: none;
 }
 
@@ -330,6 +338,56 @@ body {
 
 .singleThumb .del {
     color: #6f0000;
+}
+
+.algebraForm {
+    position: relative;
+    top: 50%;
+    height: 100%;
+    transform: translateY(-50%);
+}
+
+.algebraForm:hover>.algebraTip {
+    transform: translate(-50%, -100%);
+    opacity: 0;
+}
+
+.algebraForm:hover>.algebraInput {
+    opacity: 1;
+}
+
+.algebraTip {
+    position: absolute;
+    display: block;
+    text-align: center;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-weight: bold;
+    color: #dddddd;
+    font-size: 1.5em;
+    transition: .5s ease;
+}
+
+.algebraInput {
+    position: absolute;
+    width: 80%;
+    height: 70%;
+    appearance: none;
+    border-right: none;
+    border-left: none;
+    border-color: #adadad;
+    color: #e4e4e4;
+    padding: .5em 0;
+    font-size: 1.3em;
+    background: none;
+    outline: none;
+    resize: none;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    transition: .5s ease;
 }
 
 @media screen and (max-width: 600px) {
