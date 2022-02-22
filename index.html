@@ -12,18 +12,19 @@
     <div class="basicView" style="opacity:0">
         <div class="relationContainer">
             <div class="formInput">
-                <textarea id="editForm" placeholder="{[relation.enterHere]}"></textarea>
+                <textarea id="csvForm" placeholder="{[relation.enterHere]}"></textarea>
             </div>
             <input class='formNameInput' type="text" placeholder="{[relation.enterNameHere]}"></input>
             <div class="footBtn">
-                <a class="add" href="javascript:void(0);">{[relation.add]}</a>
+                <a class="add" href="javascript:void(0);" onclick="tableView.addTable()">{[relation.add]}</a>
                 <a class="view" href="javascript:void(0);" onclick="tableView.all()">{[relation.view]}</a>
             </div>
         </div>
         <div class="algebraContainer">
             <div class="algebraForm">
+                <textarea class="algebraInput" placeholder="{[algebra.executeTip]}"></textarea>
                 <span class="algebraTip">{[algebra.inputTip]}</span>
-                <textarea class="algebraInput"></textarea>
+                <input class="execBtn" type="button" value="{[algebra.execute]}"></input>
             </div>
         </div>
         <div class="menu">
@@ -38,6 +39,7 @@
     </div>
     <div class="loadingText">Loading(°ー°〃)</div>
     <div class="notice"><span>Language config load error.</span><a href="javascript:void(0);" onclick="basicView.closeNotice()">OK!</a></div>
+    <script src="./assets/table.js"></script>
     <script src="./assets/view.js"></script>
     <script>
         /*初始化界面*/

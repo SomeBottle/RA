@@ -8,7 +8,9 @@
         "relation.view": "查看",
         "relation.enterHere": "在这里输入关系表(CSV)",
         "relation.enterNameHere": "在这里输入关系名",
-        "algebra.inputTip":"在此输入关系代数"
+        "algebra.inputTip": "在此输入关系代数",
+        "algebra.execute": "执行",
+        "algebra.executeTip": "回车也可以执行哦"
     },
     "tableView": {
         "tableList.editCsv": "CSV",

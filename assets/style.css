@@ -256,6 +256,11 @@ textarea {
     max-width: 100%;
 }
 
+.floatContent p,
+.floatContent a {
+    font-size: 1.3rem;
+}
+
 .floatContent a {
     color: #77baff;
     text-decoration: none;
@@ -336,7 +341,11 @@ textarea {
     margin: 0 0.25em;
 }
 
-.singleThumb .del {
+.singleThumb .csvBtn {
+    color: #0056af;
+}
+
+.singleThumb .delBtn {
     color: #6f0000;
 }
 
@@ -347,17 +356,24 @@ textarea {
     transform: translateY(-50%);
 }
 
-.algebraForm:hover>.algebraTip {
+.algebraForm:hover>.execBtn {
+    opacity: 1;
+}
+
+.algebraForm:hover>.algebraInput,
+.algebraInput:focus {
+    opacity: 1;
+}
+
+.algebraForm:hover>.algebraTip,
+.algebraInput:focus+.algebraTip {
     transform: translate(-50%, -100%);
     opacity: 0;
 }
 
-.algebraForm:hover>.algebraInput {
-    opacity: 1;
-}
-
 .algebraTip {
     position: absolute;
+    z-index: 0;
     display: block;
     text-align: center;
     top: 50%;
@@ -371,6 +387,7 @@ textarea {
 
 .algebraInput {
     position: absolute;
+    z-index: 1;
     width: 80%;
     height: 70%;
     appearance: none;
@@ -388,6 +405,34 @@ textarea {
     transform: translate(-50%, -50%);
     opacity: 0;
     transition: .5s ease;
+}
+
+.algebraInput::-webkit-scrollbar {
+    display: none;
+}
+
+.execBtn {
+    position: absolute;
+    z-index: 2;
+    left: 90%;
+    top: 85%;
+    width: 20%;
+    height: 2em;
+    cursor: pointer;
+    -webkit-appearance: none;
+    outline: none;
+    background: #676767;
+    border: none;
+    transform: translate(-100%, -104%);
+    color: #dfdfdf;
+    font-size: 1.2rem;
+    opacity: 0;
+    border-top-left-radius: .2em;
+    transition: .5s ease;
+}
+
+.execBtn:hover {
+    background: #505050;
 }
 
 @media screen and (max-width: 600px) {

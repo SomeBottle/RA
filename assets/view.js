@@ -1,3 +1,4 @@
+/*视图部分*/
 'use strict';
 var s = (selector, all = false) => all ? document.querySelectorAll(selector) : document.querySelector(selector);/*简化一下选择器*/
 /*在字符串原型链上加个寻找模板占位符的方法*/
@@ -8,7 +9,7 @@ String.prototype.findTp = function () {
 String.prototype.replaceTp = function (from, to) {
     return this.replace(new RegExp('\\{\\[' + from + '\\]\\}', 'gi'), to);
 }
-var basicView = {
+const basicView = { // 基础视图
     langList: {},
     currentLang: {},
     originalTemplates: '',
@@ -138,7 +139,7 @@ var basicView = {
     }
 };
 
-var tableView = {
+const tableView = { // 关系表相关的视图
     tableTemplate: '',
     all: function () {/*查看所有的表*/
         let bv = basicView;
@@ -170,6 +171,10 @@ var tableView = {
             );
         tv.tableTemplate = tHtml;
         tv.float(tHtml);
+    },
+    addTable: function () { // 测试用代码
+        let csvContent = s('#csvForm').value;
+        tables.readCsv(csvContent);
     }
 };
 /*For temporary test*/
