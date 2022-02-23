@@ -62,24 +62,21 @@ const basicView = { // 基础视图
         let noticer = s('.notice');
         noticer.style.transform = 'translateY(-100%)';
         basicView.motionChecker(noticer, () => {
-            s('.notice span').style.float = 'left';
-            s('.notice a').style.display = 'block';
+            s('.notice span').style.float = 'initial';
+            s('.notice a').style.display = 'none';
         })
     },
     notice: function (content, needConfirm = false) { /*弹出提示(提示内容,是否要用户确认)*/
         let noticer = s('.notice'), that = this;
         noticer.style.transform = 'translateY(0)';
         s('.notice span').innerHTML = content;
-        if (!needConfirm) {
-            s('.notice span').style.float = 'initial';
-            s('.notice a').style.display = 'none';
+        if (needConfirm) {
+            s('.notice span').style.float = 'left';
+            s('.notice a').style.display = 'block';
+        } else {
+            clearInterval(that.noticeTimer);
+            that.noticeTimer = setTimeout(that.closeNotice, 2000);
         }
-        this.motionChecker(noticer, () => {
-            if (!needConfirm) {
-                clearInterval(that.noticeTimer);
-                that.noticeTimer = setTimeout(that.closeNotice, 1500);
-            }
-        })
     },
     langRender: function (section, html) {
         let bv = this, langOBJ = bv.currentLang;
@@ -99,6 +96,16 @@ const basicView = { // 基础视图
             return resp;
         } else {
             throw 'Error response, code:' + resp.status;
+        }
+    },
+    inputExistChecker: (e) => { // e既可以是直接传入元素，亦可以是Event对象
+        let bv = basicView,
+            inputElem = e instanceof Element ? e : e.target,
+            relaName = inputElem.value;
+        if (relations.relationBase[relaName]) {
+            s('.add').innerHTML = bv.getLang('basicView > relation.modify'); // 更改按钮文字为编辑
+        } else {
+            s('.add').innerHTML = bv.getLang('basicView > relation.add'); // 更改按钮文字为添加
         }
     },
     init: function () {
@@ -133,6 +140,7 @@ const basicView = { // 基础视图
                     let e = menuLinks[i], attr = (typeof e == 'object' ? e.getAttribute('data-src') : null);
                     if (attr) e.addEventListener('click', () => bv.float(attr), false);
                 }
+                s('#relationName').addEventListener('input', bv.inputExistChecker, false);
             })
     },
     float: async function (page, funcOnResp = false) {/*(要载入的页面,对请求返回的html内容进行处理的函数)*/
@@ -200,10 +208,12 @@ const relationView = { // 关系表相关的视图
         let bv = basicView,
             noticeLang = bv.currentLang['notice'],
             csvContent = s('#csvForm').value,
-            name = s('#relationName').value.trim(), // 获得关系表名
+            nameInput = s('#relationName'),
+            name = nameInput.value.trim(), // 获得关系表名
             parsed = relations.parseCsv(csvContent); // 解析CSV为数组
         if (name.notEmpty()) {
             relations.write(name, parsed).then(res => {
+                bv.inputExistChecker(nameInput);
                 bv.notice(bv.getLang('notice > ' + res));
             }, rej => {
                 bv.notice(bv.getLang('notice > ' + rej));

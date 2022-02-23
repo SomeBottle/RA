@@ -37,7 +37,7 @@ textarea {
     display: flex;
     flex-direction: column;
     flex: 1;
-    background-color: rgb(156, 156, 156);
+    background-color: rgb(114, 114, 114);
 }
 
 .formInput {
@@ -81,7 +81,7 @@ textarea {
 .footBtn {
     display: flex;
     flex-direction: row;
-    align-items: center;
+    align-items: stretch;
     width: 100%;
 }
 
@@ -149,11 +149,11 @@ textarea {
     display: block;
     padding: 1em .5em;
     font-size: 1.5em;
-    float: left;
+    float: initial;
 }
 
 .notice a {
-    display: block;
+    display: none;
     padding: 1em .5em;
     font-size: 1.5em;
     float: right;

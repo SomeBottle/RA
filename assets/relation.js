@@ -58,11 +58,9 @@ const relations = {
             for (let i = 0; i < firstLen; i++) { // 检查字段合理性
                 let field = firstRow[i]; // 当前字段
                 if (!field.notEmpty()) {
-                    rej('relation.columnEmpty'); // 有不合法列名
-                    break;
+                    throw 'relation.columnEmpty'; // 有空列名
                 } else if (attrs.indexOf(field) !== -1) {
-                    rej('relation.columnRepeat'); // 有重复列名
-                    break;
+                    throw 'relation.columnRepeat'; // 有重复列名
                 }
                 attrs.push(field); // 没有问题就将字段推入数组
                 for (let j = 0, len = tuples.length; j < len; j++) {
@@ -74,6 +72,6 @@ const relations = {
                 'tuples': tuples
             };
             res('relation.writeSuccess'); // 写入成功
-        });
+        })
     }
 };
