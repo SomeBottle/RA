@@ -203,7 +203,11 @@ const relationView = { // 关系表相关的视图
             name = s('#relationName').value.trim(), // 获得关系表名
             parsed = relations.parseCsv(csvContent); // 解析CSV为数组
         if (name.notEmpty()) {
-
+            relations.write(name, parsed).then(res => {
+                bv.notice(bv.getLang('notice > ' + res));
+            }, rej => {
+                bv.notice(bv.getLang('notice > ' + rej));
+            });
         } else {
             bv.notice(bv.getLang('notice > relation.nameRequired'));
         }

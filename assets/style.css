@@ -263,6 +263,7 @@ textarea {
 
 .floatContent a {
     color: #77baff;
+    word-break: break-word;
     text-decoration: none;
 }
 

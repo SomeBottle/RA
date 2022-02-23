@@ -1,6 +1,7 @@
 /*关系表处理部分*/
 'use strict';
 const relations = {
+    relationBase: {},
     parseCsv: function (content) { // 解析CSV文件
         /* 
             详见https://en.wikipedia.org/wiki/Comma-separated_values#Basic_rules 
@@ -48,7 +49,31 @@ const relations = {
         });
         return tableArr;
     },
-    write: function (name, tableArr) { // 创建或者写入关系表(关系名,关系表对象)
-
+    write: function (name, tableObj) { // 创建或者写入关系表(关系名,关系表对象)
+        return new Promise((res, rej) => {
+            let firstRow = tableObj[0], // 第一行是列名（属性名）
+                firstLen = firstRow.length,
+                attrs = [], // 为属性新建一个数组，元组属性值数量也以此为标准
+                tuples = tableObj.slice(1); // 剩下的是元组（属性值）
+            for (let i = 0; i < firstLen; i++) { // 检查字段合理性
+                let field = firstRow[i]; // 当前字段
+                if (!field.notEmpty()) {
+                    rej('relation.columnEmpty'); // 有不合法列名
+                    break;
+                } else if (attrs.indexOf(field) !== -1) {
+                    rej('relation.columnRepeat'); // 有重复列名
+                    break;
+                }
+                attrs.push(field); // 没有问题就将字段推入数组
+                for (let j = 0, len = tuples.length; j < len; j++) {
+                    tuples[j][i] = tuples[j][i] || null; // 如果某个元组的某个属性值为空，就替换为null
+                }
+            }
+            this.relationBase[name] = { // 存入(或覆盖)关系表
+                'attrs': attrs,
+                'tuples': tuples
+            };
+            res('relation.writeSuccess'); // 写入成功
+        });
     }
 };

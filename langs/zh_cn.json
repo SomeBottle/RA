@@ -18,6 +18,9 @@
     },
     "notice": {
         "relation.nameRequired": "关系名不能为空",
+        "relation.columnEmpty": "关系属性(列)名不能为空",
+        "relation.columnRepeat": "关系属性(列)名不能重复",
+        "relation.writeSuccess": "关系写入成功",
         "relation.modifyPageLoadFailed": "关系表编辑页面载入失败",
         "page.loadFailed": "页面载入失败"
     }
