@@ -9,12 +9,33 @@ String.prototype.findTp = function () {
 String.prototype.replaceTp = function (from, to) {
     return this.replace(new RegExp('\\{\\[' + from + '\\]\\}', 'gi'), to);
 }
+/*在字符串原型链上加一个判断是否不为空的方法*/
+String.prototype.notEmpty = function () {
+    let str = this;
+    return str && !str.match(/^\s*$/);
+}
+
 const basicView = { // 基础视图
     langList: {},
     currentLang: {},
     originalTemplates: '',
     loadedPages: {},
-    motionChecker: function (element, func, checkAnim = false) {/*CSS3运动结束监听回调器(监听元素,回调函数,监听的是不是css3Animation)*/
+    noticeTimer: null,
+    getLang: function (langStr) {
+        /* 根据指示获取当前语言对应的文本，传入的字符串类似：'notice>relation.nameRequired' */
+        let keyLayer = langStr.split('>').filter(x => x.notEmpty()).map(x => x.trim()),
+            langPointer = this.currentLang;
+        for (let i = 0, len = keyLayer.length; i < len; i++) {
+            let objKey = keyLayer[i];
+            if (langPointer[objKey]) { // 如果指针代表的对象属性存在
+                langPointer = langPointer[objKey]; // 指针后移
+            } else {
+                return keyLayer.pop(); // 如果找不到就返回最后一个key
+            }
+        }
+        return langPointer; // 最后没出错的话指针会指向一个字符串
+    },
+    motionChecker: function (element, func, checkAnim = false) { /* CSS3运动结束监听回调器(监听元素,回调函数,监听的是不是css3Animation) */
         let chosenTester = '', testers = checkAnim ? {
             'animation': 'animationend',
             'OAnimation': 'oAnimationEnd',
@@ -54,7 +75,10 @@ const basicView = { // 基础视图
             s('.notice a').style.display = 'none';
         }
         this.motionChecker(noticer, () => {
-            if (!needConfirm) setTimeout(that.closeNotice, 1500);
+            if (!needConfirm) {
+                clearInterval(that.noticeTimer);
+                that.noticeTimer = setTimeout(that.closeNotice, 1500);
+            }
         })
     },
     langRender: function (section, html) {
@@ -93,7 +117,7 @@ const basicView = { // 基础视图
             })
             .then((langResp) => bv.fHook(langResp).json())
             .catch(error => {
-                bv.notice('Language config load failed.Please contact SomeBottle', true);
+                bv.notice('Language config load failed!', true);
                 throw error;
             })
             .then((langResp) => {
@@ -119,7 +143,7 @@ const basicView = { // 基础视图
             localPage = Promise.resolve(loaded),
             applyPage = await (loaded ? localPage : fetch('./pages/' + page + '.html')
                 .then((resp) => bv.fHook(resp).text()).catch(e => {
-                    bv.notice('Float page load failed', true);
+                    bv.notice(bv.getLang('notice > page.loadFailed'), true);
                     funcOnResp = null;
                     throw e;
                 })
@@ -139,43 +163,51 @@ const basicView = { // 基础视图
     }
 };
 
-const tableView = { // 关系表相关的视图
-    tableTemplate: '',
+const relationView = { // 关系表相关的视图
+    relaTemplate: '',
     all: function () {/*查看所有的表*/
         let bv = basicView;
-        basicView.float("tableView", (resp) => bv.langRender("tableView", resp));
+        basicView.float("relationView", (resp) => bv.langRender("relationView", resp));
     },
     float: function (html) {
-        let tl = s('.tableLayer'), tc = s('.tableContent');
+        let tl = s('.relationLayer'), tc = s('.relationContent');
         tc.innerHTML = html;
         tl.style.zIndex = 52;
         tl.style.opacity = 1;
     },
     closeFloat: function () {
-        let tl = s('.tableLayer');
+        let tl = s('.relationLayer');
         tl.style.opacity = 0;
         basicView.motionChecker(tl, () => {
             tl.style.zIndex = -1;
         });
     },
-    table: async function () {
+    modify: async function () {
         let tv = this,
             bv = basicView,
-            localTp = tv.tableTemplate,
+            localTp = tv.relaTemplate,
             rsTp = Promise.resolve(localTp),
-            tHtml = await (localTp ? rsTp : fetch("./pages/tableDetail.html")
+            tHtml = await (localTp ? rsTp : fetch("./pages/relationModify.html")
                 .then(resp => bv.fHook(resp).text()).catch((e) => {
-                    bv.notice('Table detail page load failed', true);
+                    bv.notice(bv.getLang('notice > relation.modifyPageLoadFailed'), true);
                     throw e;
                 })
             );
-        tv.tableTemplate = tHtml;
+        tv.relaTemplate = tHtml;
         tv.float(tHtml);
     },
-    addTable: function () { // 测试用代码
-        let csvContent = s('#csvForm').value;
-        console.log(tables.parseCsv(csvContent));
+    addRela: function () { // 添加关系表
+        let bv = basicView,
+            noticeLang = bv.currentLang['notice'],
+            csvContent = s('#csvForm').value,
+            name = s('#relationName').value.trim(), // 获得关系表名
+            parsed = relations.parseCsv(csvContent); // 解析CSV为数组
+        if (name.notEmpty()) {
+
+        } else {
+            bv.notice(bv.getLang('notice > relation.nameRequired'));
+        }
     }
 };
 /*For temporary test*/
-tableView.table();
+relationView.modify();

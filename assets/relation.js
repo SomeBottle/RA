@@ -1,6 +1,6 @@
 /*关系表处理部分*/
 'use strict';
-const tables = {
+const relations = {
     parseCsv: function (content) { // 解析CSV文件
         /* 
             详见https://en.wikipedia.org/wiki/Comma-separated_values#Basic_rules 
@@ -48,7 +48,7 @@ const tables = {
         });
         return tableArr;
     },
-    write: function (name, tableObj) { // 创建或者写入关系表(关系名,关系表对象)
+    write: function (name, tableArr) { // 创建或者写入关系表(关系名,关系表对象)
 
     }
 };

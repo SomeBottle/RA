@@ -161,7 +161,7 @@ textarea {
 }
 
 .floatLayer,
-.tableLayer {
+.relationLayer {
     position: absolute;
     left: 0;
     top: 0;
@@ -173,7 +173,7 @@ textarea {
 }
 
 .floatLayer .close,
-.tableLayer .close {
+.relationLayer .close {
     display: block;
     position: fixed;
     z-index: 51;
@@ -186,12 +186,12 @@ textarea {
     line-height: .5em;
 }
 
-.tableLayer .close {
+.relationLayer .close {
     z-index: 60;
 }
 
 .floatContent,
-.tableContent {
+.relationContent {
     position: relative;
     margin: 1em;
     color: #fcfcfc;
@@ -199,11 +199,11 @@ textarea {
     max-width: 100%;
 }
 
-.tableMDForm {
+.relationMDForm {
     display: flex;
 }
 
-.tableMDForm input[type='text'] {
+.relationMDForm input[type='text'] {
     color: #494949;
     text-align: left;
     border: 0;
@@ -218,20 +218,20 @@ textarea {
     transition: .5s ease;
 }
 
-.tableMDForm input[type='text']:focus {
+.relationMDForm input[type='text']:focus {
     background-color: #919191;
     color: #FFF;
 }
 
-.tableMDForm input[type='text']:focus+input[type='button'],
-.tableMDForm input[type='button']:hover {
+.relationMDForm input[type='text']:focus+input[type='button'],
+.relationMDForm input[type='button']:hover {
     background-color: #c6ccd3;
     color: #666666;
     cursor: hand;
 }
 
-.tableMDForm input[type='button'],
-.tableMDForm input[type='button']:disabled {
+.relationMDForm input[type='button'],
+.relationMDForm input[type='button']:disabled {
     transition: .5s ease;
     display: inline-block;
     cursor: default;
@@ -270,11 +270,11 @@ textarea {
     text-decoration: underline;
 }
 
-.tableDetail {
+.relationDetail {
     color: #eaeaea;
 }
 
-.tableDetail td {
+.relationDetail td {
     text-align: center;
 }
 

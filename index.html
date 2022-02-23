@@ -14,10 +14,10 @@
             <div class="formInput">
                 <textarea id="csvForm" placeholder="{[relation.enterHere]}"></textarea>
             </div>
-            <input class='formNameInput' type="text" placeholder="{[relation.enterNameHere]}"></input>
+            <input class='formNameInput' id="relationName" type="text" placeholder="{[relation.enterNameHere]}"></input>
             <div class="footBtn">
-                <a class="add" href="javascript:void(0);" onclick="tableView.addTable()">{[relation.add]}</a>
-                <a class="view" href="javascript:void(0);" onclick="tableView.all()">{[relation.view]}</a>
+                <a class="add" href="javascript:void(0);" onclick="relationView.addRela()">{[relation.add]}</a>
+                <a class="view" href="javascript:void(0);" onclick="relationView.all()">{[relation.view]}</a>
             </div>
         </div>
         <div class="algebraContainer">
@@ -34,12 +34,12 @@
     <div class="floatLayer" style="opacity: 0;"><a class="close" href="javascript:void(0);" onclick="basicView.closeFloat()">×</a>
         <div class="floatContent"></div>
     </div>
-    <div class="tableLayer" style="opacity: 0;"><a class="close" href="javascript:void(0);" onclick="tableView.closeFloat()">×</a>
-        <div class="markdown-body tableContent"></div>
+    <div class="relationLayer" style="opacity: 0;"><a class="close" href="javascript:void(0);" onclick="relationView.closeFloat()">×</a>
+        <div class="markdown-body relationContent"></div>
     </div>
     <div class="loadingText">Loading(°ー°〃)</div>
     <div class="notice"><span>Language config load error.</span><a href="javascript:void(0);" onclick="basicView.closeNotice()">OK!</a></div>
-    <script src="./assets/table.js"></script>
+    <script src="./assets/relation.js"></script>
     <script src="./assets/view.js"></script>
     <script>
         /*初始化界面*/
