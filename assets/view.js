@@ -174,7 +174,7 @@ const tableView = { // 关系表相关的视图
     },
     addTable: function () { // 测试用代码
         let csvContent = s('#csvForm').value;
-        tables.readCsv(csvContent);
+        console.log(tables.parseCsv(csvContent));
     }
 };
 /*For temporary test*/
