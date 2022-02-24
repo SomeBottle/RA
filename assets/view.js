@@ -15,12 +15,24 @@ String.prototype.notEmpty = function () {
     return str && !str.match(/^\s*$/);
 }
 
+const applyStyle = (elemArr, styleObj) => { // 批量应用样式
+    elemArr = Array.isArray(elemArr) ? elemArr : [elemArr]; // 支持单一元素
+    elemArr.forEach(elem => {
+        if (elem instanceof Element) {
+            for (let key in styleObj) elem.style[key] = styleObj[key]; // 应用样式
+        }
+    });
+}
+
 const basicView = { // 基础视图
     langList: {},
     currentLang: {},
     originalTemplates: '',
+    prevCSVInput: '', // 储存输入的CSV，和nameInputChecker搭配
+    modifyingCSV: false, // 是不是正在编辑CSV，和nameInputChecker搭配
     loadedPages: {},
-    noticeTimer: null,
+    noticeTimer: null, // 通知相关定时器
+    timerForReset: null, // 清空输入框相关定时器
     getLang: function (langStr) {
         /* 根据指示获取当前语言对应的文本，传入的字符串类似：'notice>relation.nameRequired' */
         let keyLayer = langStr.split('>').filter(x => x.notEmpty()).map(x => x.trim()),
@@ -67,15 +79,15 @@ const basicView = { // 基础视图
         })
     },
     notice: function (content, needConfirm = false) { /*弹出提示(提示内容,是否要用户确认)*/
-        let noticer = s('.notice'), that = this;
+        let noticer = s('.notice'), bv = this;
         noticer.style.transform = 'translateY(0)';
         s('.notice span').innerHTML = content;
         if (needConfirm) {
             s('.notice span').style.float = 'left';
             s('.notice a').style.display = 'block';
         } else {
-            clearInterval(that.noticeTimer);
-            that.noticeTimer = setTimeout(that.closeNotice, 2000);
+            clearInterval(bv.noticeTimer);
+            bv.noticeTimer = setTimeout(bv.closeNotice, 1500);
         }
     },
     langRender: function (section, html) {
@@ -98,14 +110,25 @@ const basicView = { // 基础视图
             throw 'Error response, code:' + resp.status;
         }
     },
-    inputExistChecker: (e) => { // e既可以是直接传入元素，亦可以是Event对象
+    nameInputChecker: () => { // 检查输入的关系名是否已经存在，存在就做出相关操作
         let bv = basicView,
-            inputElem = e instanceof Element ? e : e.target,
-            relaName = inputElem.value;
-        if (relations.relationBase[relaName]) {
+            csvInput = s('#csvForm'),
+            inputElem = s('#relationName'),
+            relaName = inputElem.value,
+            relation = relations.relationBase[relaName];
+        if (relation) {
+            // 在输入存在的表单后自动还原成CSV格式
+            // 先还原成表格数组
+            let tableArr = [relation['attrs']].concat(relation['tuples']);
+            bv.modifyingCSV = true;
+            csvInput.value = relations.toCsv(tableArr);
             s('.add').innerHTML = bv.getLang('basicView > relation.modify'); // 更改按钮文字为编辑
-        } else {
+        } else if (bv.modifyingCSV) { // 之前刚刚编辑过表单，现在没有编辑了而是新增
+            bv.modifyingCSV = false;
             s('.add').innerHTML = bv.getLang('basicView > relation.add'); // 更改按钮文字为添加
+            csvInput.value = bv.prevCSVInput; // 还原之前输入的内容
+        } else {
+            bv.prevCSVInput = csvInput.value; // 记录csv输入内容
         }
     },
     init: function () {
@@ -135,13 +158,55 @@ const basicView = { // 基础视图
                 basicView.innerHTML = bv.langRender('basicView', basicViewTemplate);
                 basicView.style.opacity = 1;
                 /*初始化菜单，使点击事件与浮页关联*/
-                let menuLinks = s('.menu a', true);
+                let menuLinks = s('.menu a', true),
+                    formInput = s('.formInput');
                 for (let i in menuLinks) {
                     let e = menuLinks[i], attr = (typeof e == 'object' ? e.getAttribute('data-src') : null);
                     if (attr) e.addEventListener('click', () => bv.float(attr), false);
                 }
-                s('#relationName').addEventListener('input', bv.inputExistChecker, false);
+                s('#relationName').addEventListener('input', bv.nameInputChecker, false); // 在关系名输入框加上监听器
+                formInput.onmousedown = bv.startClear.bind(bv); // 长按csv输入框清空
+                formInput.ontouchstart = bv.startClear.bind(bv); // 适应移动端
             })
+    },
+    startClear: function () { // 开始准备清除输入框
+        let bv = this,
+            waitBar = s('.formInput .waitBar'), // 清除进度条
+            csvInput = s('#csvForm'), // csv输入框
+            nameInput = s('#relationName'); // 关系名输入框
+        applyStyle(waitBar, {
+            'width': '100%',
+            'height': '100%',
+            'border-radius': '0'
+        });
+        clearTimeout(bv.timerForReset); // 清除先前的计时器，防止重复
+        bv.timerForReset = setTimeout(() => {
+            csvInput.value = '';
+            nameInput.value = ''; // 清空输入框
+            bv.abortClear(); // 调用一次取消清除函数来让进度条返回初始状态
+            bv.nameInputChecker(); // 重设按钮文本
+        }, 1000);
+        function abort() {
+            window.removeEventListener('mouseup', abort, false);
+            window.removeEventListener('touchend', abort, false); // 移除事件
+            window.removeEventListener('mousemove', abort, false);
+            window.removeEventListener('touchmove', abort, false);
+            bv.abortClear();
+        }
+        window.addEventListener('mouseup', abort, false); // 在鼠标抬起时取消清除
+        window.addEventListener('touchend', abort, false); // 适应移动端
+        window.addEventListener('mousemove', abort, false); // 鼠标移动就取消清除（这样可以划选内容）
+        window.addEventListener('touchmove', abort, false); // 适应移动端
+    },
+    abortClear: function () { // 取消/停止清除
+        let bv = this,
+            waitBar = s('.formInput .waitBar');
+        clearTimeout(bv.timerForReset); // 清除计时器
+        applyStyle(waitBar, {
+            'width': '0%',
+            'height': '0%',
+            'border-radius': '2em'
+        });
     },
     float: async function (page, funcOnResp = false) {/*(要载入的页面,对请求返回的html内容进行处理的函数)*/
         let fl = s('.floatLayer'),
@@ -158,8 +223,10 @@ const basicView = { // 基础视图
             );
         bv.loadedPages[page] = applyPage;
         fc.innerHTML = funcOnResp ? funcOnResp(applyPage) : applyPage;
-        fl.style.zIndex = 50;
-        fl.style.opacity = 1;
+        applyStyle(fl, {
+            'z-index': 50,
+            'opacity': 1
+        });
         funcOnResp = null;
     },
     closeFloat: function () {
@@ -174,14 +241,46 @@ const basicView = { // 基础视图
 const relationView = { // 关系表相关的视图
     relaTemplate: '',
     all: function () {/*查看所有的表*/
-        let bv = basicView;
-        basicView.float("relationView", (resp) => bv.langRender("relationView", resp));
+        let bv = basicView,
+            rv = this,
+            nameInput = s('#relationName'); // 关系名输入框
+        basicView.float("relationThumb", (resp) => {
+            let template = resp, // relationThumb.html是模板
+                relas = relations.relationBase, // 临时引用关系集
+                rendered = ''; // 渲染后的html
+            for (let i in relas) { // 遍历关系表集
+                let temp = template.replaceTp('relationName', i); // 替换模板中的关系名
+                temp = temp.replaceTp('attributes', relas[i]['attrs'].join(','));  // 替换模板中的属性列
+                rendered += bv.langRender("relationView", temp); // 添加到渲染后的html
+            }
+            return rendered || `<p>${bv.getLang('relationView > relation.noItem')}</p>`;
+        }).then(res => {
+            let thumbFoots = s('.singleThumb > .foot', true);
+            for (let foot of thumbFoots) { // 关系表缩略底部按钮
+                let name = foot.getAttribute('data-name'), // 获得关系名
+                    csvBtn = foot.querySelector('.csvBtn'), // 获得csv按钮
+                    delBtn = foot.querySelector('.delBtn'); // 获得删除按钮
+                csvBtn.addEventListener('click', () => {
+                    bv.closeFloat();
+                    nameInput.value = name; // 填充关系名
+                    bv.nameInputChecker(); // 触发编辑
+                }, false); // 绑定csv按钮点击事件
+                delBtn.addEventListener('click', () => {
+                    if (confirm(bv.getLang('relationView > relation.delConfirm'))) {
+                        relations.del(name); // 删除关系表
+                        rv.all(); // 重新渲染
+                    }
+                }, false); // 绑定删除按钮点击事件
+            }
+        });
     },
     float: function (html) {
         let tl = s('.relationLayer'), tc = s('.relationContent');
         tc.innerHTML = html;
-        tl.style.zIndex = 52;
-        tl.style.opacity = 1;
+        applyStyle(tl, {
+            'z-index': 52,
+            'opacity': 1
+        });
     },
     closeFloat: function () {
         let tl = s('.relationLayer');
@@ -191,9 +290,9 @@ const relationView = { // 关系表相关的视图
         });
     },
     modify: async function () {
-        let tv = this,
+        let rv = this,
             bv = basicView,
-            localTp = tv.relaTemplate,
+            localTp = rv.relaTemplate,
             rsTp = Promise.resolve(localTp),
             tHtml = await (localTp ? rsTp : fetch("./pages/relationModify.html")
                 .then(resp => bv.fHook(resp).text()).catch((e) => {
@@ -201,20 +300,23 @@ const relationView = { // 关系表相关的视图
                     throw e;
                 })
             );
-        tv.relaTemplate = tHtml;
-        tv.float(tHtml);
+        rv.relaTemplate = tHtml;
+        rv.float(tHtml);
     },
     addRela: function () { // 添加关系表
         let bv = basicView,
-            noticeLang = bv.currentLang['notice'],
-            csvContent = s('#csvForm').value,
+            csvInput = s('#csvForm'),
+            csvContent = csvInput.value,
             nameInput = s('#relationName'),
             name = nameInput.value.trim(), // 获得关系表名
             parsed = relations.parseCsv(csvContent); // 解析CSV为数组
         if (name.notEmpty()) {
             relations.write(name, parsed).then(res => {
-                bv.inputExistChecker(nameInput);
+                csvInput.value = '';
+                nameInput.value = ''; // 提交后清空表单
+                bv.prevCSVInput = ''; // 提交后清空之前的CSV输入
                 bv.notice(bv.getLang('notice > ' + res));
+                bv.nameInputChecker(); // 检查应用按钮文字
             }, rej => {
                 bv.notice(bv.getLang('notice > ' + rej));
             });

@@ -49,6 +49,17 @@ const relations = {
         });
         return tableArr;
     },
+    toCsv: function (tableArr) { // 恢复为CSV文件
+        let csv = '';
+        for (let i = 0, len = tableArr.length; i < len; i++) {
+            tableArr[i] = tableArr[i].map(x => {
+                // 针对逗号和引号特殊处理
+                return x.match(/"|,/g) ? `"${x.replaceAll('"', '""')}"` : x;
+            });
+            csv += tableArr[i].join(',') + '\n';
+        }
+        return csv;
+    },
     write: function (name, tableObj) { // 创建或者写入关系表(关系名,关系表对象)
         return new Promise((res, rej) => {
             let firstRow = tableObj[0], // 第一行是列名（属性名）
@@ -73,5 +84,8 @@ const relations = {
             };
             res('relation.writeSuccess'); // 写入成功
         })
+    },
+    del: function (name) { // 删除关系表
+        delete this.relationBase[name];
     }
 };
