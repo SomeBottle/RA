@@ -14,10 +14,15 @@
         "algebra.executeTip": "回车也可以执行哦"
     },
     "relationView": {
+        "relationModify.title": "修改区",
+        "relationModify.inputTip": "请选择要修改的值",
+        "relationModify.submit": "提交",
+        "relationModify.tips": "点击关系中的属性值可以在这里进行修改。可以回车提交修改~",
         "relationItem.editCsv": "CSV",
         "relationItem.del": "删除",
         "relation.noItem": "这儿空空如也，去添加点关系吧",
-        "relation.delConfirm": "确定要删除这个关系吗？"
+        "relation.delConfirm": "确定要删除这个关系吗？",
+        "relation.translation": "关系"
     },
     "notice": {
         "relation.nameRequired": "关系名不能为空",

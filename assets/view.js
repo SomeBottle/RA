@@ -15,13 +15,20 @@ String.prototype.notEmpty = function () {
     return str && !str.match(/^\s*$/);
 }
 
-const applyStyle = (elemArr, styleObj) => { // 批量应用样式
+const applyStyle = (elemArr, styleObj, delay = false) => { // 批量应用样式(元素/元素数组,样式对象,应用延迟)
     elemArr = Array.isArray(elemArr) ? elemArr : [elemArr]; // 支持单一元素
-    elemArr.forEach(elem => {
-        if (elem instanceof Element) {
-            for (let key in styleObj) elem.style[key] = styleObj[key]; // 应用样式
-        }
-    });
+    let apply = () => {
+        elemArr.forEach(elem => {
+            if (elem instanceof Element) {
+                for (let key in styleObj) elem.style[key] = styleObj[key]; // 应用样式
+            }
+        });
+    };
+    if (delay) { // 延迟应用样式
+        setTimeout(apply, delay);
+    } else {
+        apply();
+    }
 }
 
 const basicView = { // 基础视图
@@ -225,17 +232,17 @@ const basicView = { // 基础视图
             );
         bv.loadedPages[page] = applyPage;
         fc.innerHTML = funcOnResp ? funcOnResp(applyPage) : applyPage;
+        fl.style.display = 'block';
         applyStyle(fl, {
-            'z-index': 50,
             'opacity': 1
-        });
+        }, 50);
         funcOnResp = null;
     },
     closeFloat: function () {
         let fl = s('.floatLayer'), bv = this;
         fl.style.opacity = 0;
         bv.motionChecker(fl, () => {
-            fl.style.zIndex = -1;
+            fl.style.display = 'none';
         });
     }
 };
@@ -259,7 +266,8 @@ const relationView = { // 关系表相关的视图
         }).then(res => {
             let thumbFoots = s('.singleThumb > .foot', true);
             for (let foot of thumbFoots) { // 关系表缩略底部按钮
-                let name = foot.getAttribute('data-name'), // 获得关系名
+                let parentThumb = foot.parentNode,
+                    name = parentThumb.getAttribute('data-name'), // 获得关系名
                     csvBtn = foot.querySelector('.csvBtn'), // 获得csv按钮
                     delBtn = foot.querySelector('.delBtn'); // 获得删除按钮
                 csvBtn.addEventListener('click', () => {
@@ -273,27 +281,33 @@ const relationView = { // 关系表相关的视图
                         rv.all(); // 重新渲染
                     }
                 }, false); // 绑定删除按钮点击事件
+                parentThumb.querySelector('#modifyBtn').onclick = rv.modify; // 绑定关系缩略图点击事件
             }
         });
     },
     float: function (html) {
         let tl = s('.relationLayer'), tc = s('.relationContent');
         tc.innerHTML = html;
+        tl.style.display = 'block';
         applyStyle(tl, {
-            'z-index': 52,
             'opacity': 1
-        });
+        }, 50);
     },
     closeFloat: function () {
         let tl = s('.relationLayer');
         tl.style.opacity = 0;
         basicView.motionChecker(tl, () => {
-            tl.style.zIndex = -1;
+            tl.style.display = 'none';
         });
     },
-    modify: async function () {
-        let rv = this,
+    modify: async function (e) {
+        let rv = relationView,
             bv = basicView,
+            name = e.target.parentNode.getAttribute('data-name'), // 获得要编辑的关系名
+            relation = relations.relationBase[name], // 获得要编辑的关系表
+            relaAttrs = relation['attrs'],
+            relaTuples = relation['tuples'],
+            relaSpan = relaAttrs.length, // 获得关系表的属性数量
             localTp = rv.relaTemplate,
             rsTp = Promise.resolve(localTp),
             tHtml = await (localTp ? rsTp : fetch("./pages/relationModify.html")
@@ -303,7 +317,30 @@ const relationView = { // 关系表相关的视图
                 })
             );
         rv.relaTemplate = tHtml;
-        rv.float(tHtml);
+        let attrsTd = relaAttrs.map(x => `<td>${x}</td>`).join(''), // 构建属性列
+            tuplesBody = ''; // 构建关系表内容
+        for (let i = 0, len = relaTuples.length; i < len; i++) {
+            let tuple = relaTuples[i],
+                rowTd = tuple.map((x, j) => `<td class='val'><a href='javascript:void(0);' data-column="${j}">${x}</a></td>`).join('');
+            tuplesBody += `<tr data-row="${i}">${rowTd}<td class="controls val">
+            <a href="javascript:void(0);">↑</a>
+        </td>
+        <td class="controls val">
+            <a href="javascript:void(0);">↓</a>
+        </td>
+        <td class="controls val">
+            <a href="javascript:void(0);">+</a>
+        </td>
+        <td class="controls val">
+            <a href="javascript:void(0);">×</a>
+        </td></tr>`;
+        }
+        tHtml = tHtml.replaceTp('relationName', name)
+            .replaceTp('relationSpan', relaSpan)
+            .replaceTp('attrsRow', attrsTd) // 替换模板中的关系名和属性列
+            .replaceTp('tuplesBody', tuplesBody); // 替换模板中的关系表内容
+        rv.float(bv.langRender('relationView', tHtml)); // 渲染页面
+
     },
     addRela: function () { // 添加关系表
         let bv = basicView,
@@ -327,5 +364,3 @@ const relationView = { // 关系表相关的视图
         }
     }
 };
-/*For temporary test*/
-relationView.modify();

@@ -183,20 +183,29 @@ textarea {
 .floatLayer,
 .relationLayer {
     position: absolute;
+    display: none;
+    opacity: 0;
     left: 0;
     top: 0;
     width: 100%;
     min-height: 100%;
-    z-index: -1;
     background-color: #4e4e4e;
     transition: .5s ease;
+}
+
+.floatLayer {
+    z-index: 50;
+}
+
+.relationLayer {
+    z-index: 52;
 }
 
 .floatLayer .close,
 .relationLayer .close {
     display: block;
     position: fixed;
-    z-index: 51;
+    z-index: 53;
     right: 0;
     top: 0;
     text-decoration: none;
@@ -292,30 +301,62 @@ textarea {
 }
 
 .relationDetail {
+    border-spacing: 0;
+    border-collapse: collapse;
+    display: block;
+    width: max-content;
+    max-width: 100%;
+    overflow: auto;
     color: #eaeaea;
 }
 
-.relationDetail td {
+.relationDetail td,
+.relationDetail th {
     text-align: center;
+    padding: 6px 13px;
+    border: 2px solid #30363d;
 }
 
-.val {
-    padding: 0!important;
+.relationDetail tr {
+    border: none;
 }
 
-.val a {
+.relationDetail tr:hover>.controls {
+    opacity: 1;
+}
+
+.relationDetail .val {
+    padding: 0;
+}
+
+.relationDetail .val a {
     display: block;
+    padding: 0 .4em;
     line-height: 2em;
-    width: 100%;
     height: 100%;
     text-decoration: none;
     transition: .5s ease;
     color: #eaeaea;
 }
 
-.val a:hover {
+.relationDetail .val a:hover {
     color: #FFF;
-    background-color: #515151;
+    background-color: grey;
+}
+
+.relationDetail .controls {
+    border: none;
+    opacity: 0;
+    transition: .5s ease;
+}
+
+.relationDetail .controls a {
+    width: 2em;
+    padding: 0;
+}
+
+.relationDetail .controls a:hover {
+    background-color: #757575;
 }
 
 .singleThumb {

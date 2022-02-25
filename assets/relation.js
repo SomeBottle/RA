@@ -1,7 +1,8 @@
 /*关系表处理部分*/
 'use strict';
+const prevRelationBase = localStorage['RARelationBase']; // 读取本地的关系集
 const relations = {
-    relationBase: {},
+    relationBase: prevRelationBase ? JSON.parse(prevRelationBase) : {},
     parseCsv: function (content) { // 解析CSV文件
         /* 
             详见https://en.wikipedia.org/wiki/Comma-separated_values#Basic_rules 
@@ -82,10 +83,12 @@ const relations = {
                 'attrs': attrs,
                 'tuples': tuples
             };
+            localStorage['RARelationBase'] = JSON.stringify(this.relationBase); // 存入本地存储
             res('relation.writeSuccess'); // 写入成功
         })
     },
     del: function (name) { // 删除关系表
         delete this.relationBase[name];
+        localStorage['RARelationBase'] = JSON.stringify(this.relationBase); // 存入本地存储
     }
 };
