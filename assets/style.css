@@ -74,7 +74,8 @@ textarea {
     border-radius: 2em;
     background-color: #939393;
     transform: translate(-50%, -50%);
-    transition: 1s ease;
+    transition: .9s ease;
+    transition-delay: .1s;
 }
 
 .formInput textarea::placeholder {

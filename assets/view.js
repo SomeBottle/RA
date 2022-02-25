@@ -195,8 +195,10 @@ const basicView = { // 基础视图
         }
         window.addEventListener('mouseup', abort, false); // 在鼠标抬起时取消清除
         window.addEventListener('touchend', abort, false); // 适应移动端
-        window.addEventListener('mousemove', abort, false); // 鼠标移动就取消清除（这样可以划选内容）
-        window.addEventListener('touchmove', abort, false); // 适应移动端
+        setTimeout(() => { // 移动事件需要稍微延迟一下
+            window.addEventListener('mousemove', abort, false); // 鼠标移动就取消清除（这样可以划选内容）
+            window.addEventListener('touchmove', abort, false); // 适应移动端
+        }, 100);
     },
     abortClear: function () { // 取消/停止清除
         let bv = this,
