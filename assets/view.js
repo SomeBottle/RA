@@ -323,16 +323,16 @@ const relationView = { // 关系表相关的视图
             let tuple = relaTuples[i],
                 rowTd = tuple.map((x, j) => `<td class='val'><a href='javascript:void(0);' data-column="${j}">${x}</a></td>`).join('');
             tuplesBody += `<tr data-row="${i}">${rowTd}<td class="controls val">
-            <a href="javascript:void(0);">↑</a>
+            <a href="javascript:void(0);" act="forward">↑</a>
         </td>
         <td class="controls val">
-            <a href="javascript:void(0);">↓</a>
+            <a href="javascript:void(0);" act="backward">↓</a>
         </td>
         <td class="controls val">
-            <a href="javascript:void(0);">+</a>
+            <a href="javascript:void(0);" act="add">+</a>
         </td>
         <td class="controls val">
-            <a href="javascript:void(0);">×</a>
+            <a href="javascript:void(0);" act="del">×</a>
         </td></tr>`;
         }
         tHtml = tHtml.replaceTp('relationName', name)
@@ -340,7 +340,27 @@ const relationView = { // 关系表相关的视图
             .replaceTp('attrsRow', attrsTd) // 替换模板中的关系名和属性列
             .replaceTp('tuplesBody', tuplesBody); // 替换模板中的关系表内容
         rv.float(bv.langRender('relationView', tHtml)); // 渲染页面
-
+        let tableBtns = s('#relationBody').querySelectorAll('a'); // 获取所有a标签
+        for (let btn of tableBtns) { // 绑定a标签点击事件
+            let dataColumn = btn.getAttribute('data-column'); // 获得点击的a标签的data-column属性
+            if (dataColumn) { // 存在data-column，说明是属性格，对值操作
+                btn.onclick = rv.modifySingleVal;
+            } else { // 不存在data-column，说明是编辑按钮，对元组操作
+                btn.onclick = rv.modifyTuple;
+            }
+        }
+    },
+    modifyTuple: function (e) { // 编辑元组(触发元素)
+        let elem = e.target,
+            action = elem.getAttribute('act'), // 获得操作内容
+            row = elem.parentNode.parentNode.getAttribute('data-row'); // 获得点击的元组行号
+        console.log(action, row);
+    },
+    modifySingleVal: function (e) { // 编辑一个值(触发元素)
+        let elem = e.target,
+            column = elem.getAttribute('data-column'), // 获得编辑的列号
+            row = elem.parentNode.parentNode.getAttribute('data-row'); // 获得编辑的行号
+        console.log('editing:', column, row);
     },
     addRela: function () { // 添加关系表
         let bv = basicView,
