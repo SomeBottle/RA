@@ -252,16 +252,15 @@ textarea {
     color: #FFF;
 }
 
-.relationMDForm input[type='text']:focus+input[type='button'],
-.relationMDForm input[type='button']:hover {
+.relationMDForm input[type='text']:focus+input[type='button'] {
     background-color: #c6ccd3;
     color: #666666;
     cursor: hand;
 }
 
-.relationMDForm input[type='button'],
-.relationMDForm input[type='button']:disabled {
+.relationMDForm input[type='button'] {
     transition: .5s ease;
+    transition-delay: .3s;
     display: inline-block;
     cursor: default;
     -webkit-appearance: none;
@@ -333,6 +332,7 @@ textarea {
     display: block;
     padding: 0 .4em;
     line-height: 2em;
+    min-height: 2em;
     height: 100%;
     text-decoration: none;
     transition: .5s ease;

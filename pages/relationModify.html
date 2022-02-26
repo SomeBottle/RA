@@ -1,4 +1,5 @@
-<table class='relationDetail'>
+<table class='relationDetail' data-name="{[relationName]}">
+    {{table}}
     <thead>
         <tr>
             <th colspan="{[relationSpan]}">{[relation.translation]}: {[relationName]}</th>
@@ -10,9 +11,10 @@
     <tbody id="relationBody">
         {[tuplesBody]}
     </tbody>
+    {{tableEnd}}
 </table>
 <h2># {[relationModify.title]}</h2>
-<div class='relationMDForm'><input type="text" placeholder="{[relationModify.inputTip]}" id="modifiedVal" disabled></input><input type="button" value="{[relationModify.submit]}" disabled></input>
+<div class='relationMDForm'><input type="text" placeholder="{[relationModify.inputTip]}" id="modifiedVal" disabled></input><input type="button" id="modSubmit" value="{[relationModify.submit]}"></input>
 </div>
 <br>
 <p><b>PS: </b>{[relationModify.tips]}</p>

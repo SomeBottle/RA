@@ -3,7 +3,17 @@
 var s = (selector, all = false) => all ? document.querySelectorAll(selector) : document.querySelector(selector);/*简化一下选择器*/
 /*在字符串原型链上加个寻找模板占位符的方法*/
 String.prototype.findTp = function () {
-    return this.matchAll(new RegExp('\\{\\[(\\S*?)\\]\\}', 'gi'));/*使用?非贪心模式，防止没有空格的整段被匹配，利用matchAll识别正则分组*/
+    return this.matchAll(/\{\[(\S*?)\]\}/gi);/*使用?非贪心模式，防止没有空格的整段被匹配，利用matchAll识别正则分组*/
+}
+String.prototype.extractTp = function (flag, remove = false) { // 提取模板(占位符,是否移除HTML)，返回[提取出的模板,原模板内容(可选去除提取的部分)]
+    let splitOnce = this.split(new RegExp('\\{\\{' + flag + '\\}\\}', 'gi')),
+        template = remove ? this.replace(new RegExp('\\{\\{' + flag + '\\}\\}[\\s\\S]*?\\{\\{' + flag + 'End\\}\\}', 'gi'), '') : this;
+    if (splitOnce[1]) {
+        let extracted = splitOnce[1].split(new RegExp('\\{\\{' + flag + 'End\\}\\}', 'gi'))[0];
+        return [extracted, template];
+    } else {
+        return false;
+    }
 }
 /*在字符串原型链上加个替换模板占位符的方法*/
 String.prototype.replaceTp = function (from, to) {
@@ -239,16 +249,23 @@ const basicView = { // 基础视图
         funcOnResp = null;
     },
     closeFloat: function () {
-        let fl = s('.floatLayer'), bv = this;
+        let fl = s('.floatLayer'),
+            fc = s('.floatContent'),
+            bv = this;
         fl.style.opacity = 0;
         bv.motionChecker(fl, () => {
             fl.style.display = 'none';
+            fc.innerHTML = '';
         });
     }
 };
 
 const relationView = { // 关系表相关的视图
-    relaTemplate: '',
+    modifyTemplate: {
+        'main': '', // relationModify主模板
+        'table': '' // relationModify表格模板
+    }, // 关系表模板
+    modifyingCell: [], // 正在被修改的单元格[列序,行序]
     all: function () {/*查看所有的表*/
         let bv = basicView,
             rv = this,
@@ -269,18 +286,22 @@ const relationView = { // 关系表相关的视图
                 let parentThumb = foot.parentNode,
                     name = parentThumb.getAttribute('data-name'), // 获得关系名
                     csvBtn = foot.querySelector('.csvBtn'), // 获得csv按钮
-                    delBtn = foot.querySelector('.delBtn'); // 获得删除按钮
-                csvBtn.addEventListener('click', () => {
-                    bv.closeFloat();
-                    nameInput.value = name; // 填充关系名
-                    bv.nameInputChecker(); // 触发编辑
-                }, false); // 绑定csv按钮点击事件
-                delBtn.addEventListener('click', () => {
-                    if (confirm(bv.getLang('relationView > relation.delConfirm'))) {
-                        relations.del(name); // 删除关系表
-                        rv.all(); // 重新渲染
+                    delBtn = foot.querySelector('.delBtn'), // 获得删除按钮
+                    editCSV = () => {
+                        bv.closeFloat();
+                        nameInput.value = name; // 填充关系名
+                        bv.nameInputChecker(); // 触发编辑
+                        csvBtn.removeEventListener('click', editCSV, false);
+                    },
+                    delRela = () => {
+                        if (confirm(bv.getLang('relationView > relation.delConfirm'))) {
+                            delBtn.removeEventListener('click', delRela, false);
+                            relations.del(name); // 删除关系表
+                            parentThumb.remove(); // 重新渲染
+                        }
                     }
-                }, false); // 绑定删除按钮点击事件
+                csvBtn.addEventListener('click', editCSV, false); // 绑定csv按钮点击事件
+                delBtn.addEventListener('click', delRela, false); // 绑定删除按钮点击事件
                 parentThumb.querySelector('#modifyBtn').onclick = rv.modify; // 绑定关系缩略图点击事件
             }
         });
@@ -294,34 +315,55 @@ const relationView = { // 关系表相关的视图
         }, 50);
     },
     closeFloat: function () {
-        let tl = s('.relationLayer');
+        let tl = s('.relationLayer'),
+            tc = s('.relationContent');
         tl.style.opacity = 0;
         basicView.motionChecker(tl, () => {
             tl.style.display = 'none';
+            tc.innerHTML = '';
         });
     },
     modify: async function (e) {
         let rv = relationView,
             bv = basicView,
             name = e.target.parentNode.getAttribute('data-name'), // 获得要编辑的关系名
-            relation = relations.relationBase[name], // 获得要编辑的关系表
-            relaAttrs = relation['attrs'],
-            relaTuples = relation['tuples'],
-            relaSpan = relaAttrs.length, // 获得关系表的属性数量
-            localTp = rv.relaTemplate,
+            localTp = rv.modifyTemplate['main'],
             rsTp = Promise.resolve(localTp),
-            tHtml = await (localTp ? rsTp : fetch("./pages/relationModify.html")
+            mainHtml = await (localTp ? rsTp : fetch("./pages/relationModify.html")
                 .then(resp => bv.fHook(resp).text()).catch((e) => {
                     bv.notice(bv.getLang('notice > relation.modifyPageLoadFailed'), true);
                     throw e;
                 })
-            );
-        rv.relaTemplate = tHtml;
-        let attrsTd = relaAttrs.map(x => `<td>${x}</td>`).join(''), // 构建属性列
+            ),
+            tableTp;
+        if (!localTp) { // 如果内存中还没有模板，就提取一下
+            [tableTp, mainHtml] = mainHtml.extractTp('table', true);
+            rv.modifyTemplate = {
+                'main': mainHtml,
+                'table': tableTp
+            }
+        }
+        mainHtml = mainHtml.replaceTp('relationName', name); // 获得表格模板
+        rv.float(bv.langRender('relationView', mainHtml)); // 渲染页面
+        rv.modifyTableRender(name, s('.relationDetail')); // 渲染表格
+    },
+    modifyTableRender: function (name, printAt) { // 渲染编辑用的表格(关系名,打印到哪个元素里)
+        let rv = this,
+            bv = basicView,
+            template = rv.modifyTemplate['table'], // 获得表格模板
+            relation = relations.relationBase[name], // 获得要编辑的关系表
+            relaAttrs = relation['attrs'],
+            relaTuples = relation['tuples'],
+            relaSpan = relaAttrs.length, // 获得关系表的属性数量
+            attrsTd = relaAttrs.map(x => `<td>${x}</td>`).join(''), // 构建属性列
             tuplesBody = ''; // 构建关系表内容
         for (let i = 0, len = relaTuples.length; i < len; i++) {
             let tuple = relaTuples[i],
-                rowTd = tuple.map((x, j) => `<td class='val'><a href='javascript:void(0);' data-column="${j}">${x}</a></td>`).join('');
+                rowTd = tuple.map((x, j) => {
+                    // 保留NULL和空值的区别
+                    let content = (x == null) ? 'NULL' : x;
+                    return `<td class='val'><a href='javascript:void(0);' id="cell-${j}-${i}" data-column="${j}">${content}</a></td>`
+                }).join('');
             tuplesBody += `<tr data-row="${i}">${rowTd}<td class="controls val">
             <a href="javascript:void(0);" act="forward">↑</a>
         </td>
@@ -329,17 +371,16 @@ const relationView = { // 关系表相关的视图
             <a href="javascript:void(0);" act="backward">↓</a>
         </td>
         <td class="controls val">
-            <a href="javascript:void(0);" act="add">+</a>
+            <a href="javascript:void(0);" act="insert">+</a>
         </td>
         <td class="controls val">
             <a href="javascript:void(0);" act="del">×</a>
         </td></tr>`;
         }
-        tHtml = tHtml.replaceTp('relationName', name)
-            .replaceTp('relationSpan', relaSpan)
+        template = template.replaceTp('relationSpan', relaSpan)
             .replaceTp('attrsRow', attrsTd) // 替换模板中的关系名和属性列
             .replaceTp('tuplesBody', tuplesBody); // 替换模板中的关系表内容
-        rv.float(bv.langRender('relationView', tHtml)); // 渲染页面
+        printAt.innerHTML = bv.langRender('relationView', template); // 打印到页面
         let tableBtns = s('#relationBody').querySelectorAll('a'); // 获取所有a标签
         for (let btn of tableBtns) { // 绑定a标签点击事件
             let dataColumn = btn.getAttribute('data-column'); // 获得点击的a标签的data-column属性
@@ -350,17 +391,82 @@ const relationView = { // 关系表相关的视图
             }
         }
     },
-    modifyTuple: function (e) { // 编辑元组(触发元素)
-        let elem = e.target,
+    modifyTuple: function (e) { // 操作元组(event)
+        let rv = relationView,
+            bv = basicView,
+            elem = e.target,
+            name = s('.relationDetail').getAttribute('data-name'), // 获得关系名
             action = elem.getAttribute('act'), // 获得操作内容
-            row = elem.parentNode.parentNode.getAttribute('data-row'); // 获得点击的元组行号
-        console.log(action, row);
+            rowElem = elem.parentNode.parentNode, // 获得当前行
+            rowInd = Number(rowElem.getAttribute('data-row')), // 获得点击的元组行号
+            tableElem = s('.relationDetail'),// 获得关系表展示元素
+            result = '';
+        switch (action) {
+            case 'forward':
+                result = relations.moveTuple(name, rowInd, rowInd - 1);
+                break;
+            case 'backward':
+                result = relations.moveTuple(name, rowInd, rowInd + 1);
+                break;
+            case 'insert':
+                result = relations.insertEmptyTuple(name, rowInd);
+                break;
+            case 'del':
+                result = relations.delTuple(name, rowInd);
+                break;
+        }
+        let [success, msg] = result;
+        if (!success) { // 操作不成功
+            bv.notice(bv.getLang(`relationView > ${msg}`));
+            return false;
+        }
+        rv.modifyTableRender(name, tableElem); // 重渲染表格
     },
-    modifySingleVal: function (e) { // 编辑一个值(触发元素)
+    modifySingleVal: function (e) { // 编辑一个值(event)
         let elem = e.target,
+            name = s('.relationDetail').getAttribute('data-name'), // 获得关系名
             column = elem.getAttribute('data-column'), // 获得编辑的列号
-            row = elem.parentNode.parentNode.getAttribute('data-row'); // 获得编辑的行号
-        console.log('editing:', column, row);
+            row = elem.parentNode.parentNode.getAttribute('data-row'), // 获得编辑的行号
+            cell = s(`#cell-${column}-${row}`), // 获得编辑的单元格
+            modifiedVal = s('#modifiedVal'), // 获得编辑框
+            submitBtn = s('#modSubmit'), // 获得提交按钮
+            rv = relationView,
+            enterSubmit = (e) => {
+                if (e.key == 'Enter') {
+                    submitIt();
+                }
+            },
+            submitIt = () => {
+                let newVal = modifiedVal.value,
+                    // NULL字符串转换成null
+                    content = (newVal.toLowerCase() == 'null') ? null : newVal;
+                relations.writeSingleVal(name, content, row, column);
+                cell.innerHTML = newVal; // 更新单元格内容
+                cancelModify();
+            },
+            cancelModify = () => {
+                submitBtn.removeEventListener('click', submitIt);
+                window.removeEventListener('keydown', enterSubmit);
+                cell.style.backgroundColor = ''; // 设置单元格背景色，恢复默认
+                modifiedVal.setAttribute('disabled', ''); // 禁用编辑框
+                modifiedVal.value = ''; // 清空编辑框
+                rv.modifyingCell = []; // 清空正在编辑的行列
+            },
+            cancelCheck = (e) => { // 检查是否取消编辑(event)
+                let clickOn = e.target; // 获得点击的元素
+                if (!['modifiedVal', 'modSubmit'].includes(clickOn.id)) { // 点击的不是表单
+                    window.removeEventListener('mousedown', cancelCheck);
+                    cancelModify(); // 取消编辑
+                }
+            };
+        cell.style.backgroundColor = 'grey'; // 设置单元格背景色，突出重点
+        rv.modifyingCell = [column, row]; // 记录正在编辑的行列
+        modifiedVal.removeAttribute('disabled'); // 启用编辑框
+        modifiedVal.focus(); // 聚焦编辑框
+        modifiedVal.value = cell.innerText; // 填充编辑框
+        submitBtn.addEventListener('click', submitIt); // 绑定提交按钮点击事件
+        window.addEventListener('keydown', enterSubmit); // 绑定回车事件
+        window.addEventListener('mousedown', cancelCheck); // 绑定失焦事件，能取消编辑
     },
     addRela: function () { // 添加关系表
         let bv = basicView,
@@ -370,11 +476,12 @@ const relationView = { // 关系表相关的视图
             name = nameInput.value.trim(), // 获得关系表名
             parsed = relations.parseCsv(csvContent); // 解析CSV为数组
         if (name.notEmpty()) {
-            relations.write(name, parsed).then(res => {
+            relations.write(name, parsed).then(resArr => {
+                /* 这里resolve的是一个数组:[是否是在编辑已有关系,成功消息] */
                 csvInput.value = '';
                 nameInput.value = ''; // 提交后清空表单
-                bv.prevCSVInput = ''; // 提交后清空之前的CSV输入
-                bv.notice(bv.getLang('notice > ' + res));
+                if (!resArr[0]) bv.prevCSVInput = ''; // 提交后清空之前的CSV输入(当是新建而不是编辑时)
+                bv.notice(bv.getLang('notice > ' + resArr[1]));
                 bv.nameInputChecker(); // 检查应用按钮文字
             }, rej => {
                 bv.notice(bv.getLang('notice > ' + rej));

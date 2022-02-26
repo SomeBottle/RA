@@ -3,6 +3,9 @@
 const prevRelationBase = localStorage['RARelationBase']; // 读取本地的关系集
 const relations = {
     relationBase: prevRelationBase ? JSON.parse(prevRelationBase) : {},
+    save: function () { // 存入本地存储
+        localStorage['RARelationBase'] = JSON.stringify(this.relationBase);
+    },
     parseCsv: function (content) { // 解析CSV文件
         /* 
             详见https://en.wikipedia.org/wiki/Comma-separated_values#Basic_rules 
@@ -56,7 +59,7 @@ const relations = {
             tableArr[i] = tableArr[i].map(x => {
                 // 针对逗号和引号特殊处理
                 return x && x.match(/"|,/g) ? `"${x.replaceAll('"', '""')}"` : x;
-            });
+            }); // 去除未知项
             csv += tableArr[i].join(',') + '\n';
         }
         return csv;
@@ -66,7 +69,8 @@ const relations = {
             let firstRow = tableObj[0], // 第一行是列名（属性名）
                 firstLen = firstRow.length,
                 attrs = [], // 为属性新建一个数组，元组属性值数量也以此为标准
-                tuples = tableObj.slice(1); // 剩下的是元组（属性值）
+                tuples = tableObj.slice(1), // 剩下的是元组（属性值）
+                exist = this.relationBase.hasOwnProperty(name); // 关系表是否事先存在
             for (let i = 0; i < firstLen; i++) { // 检查字段合理性
                 let field = firstRow[i]; // 当前字段
                 if (!field.notEmpty()) {
@@ -76,19 +80,60 @@ const relations = {
                 }
                 attrs.push(field); // 没有问题就将字段推入数组
                 for (let j = 0, len = tuples.length; j < len; j++) {
-                    tuples[j][i] = tuples[j][i] || null; // 如果某个元组的某个属性值为空，就替换为null
+                    let current = tuples[j][i];
+                    tuples[j][i] = (current == undefined) ? null : current; // 缺少的地方记录为NULL
                 }
             }
             this.relationBase[name] = { // 存入(或覆盖)关系表
                 'attrs': attrs,
                 'tuples': tuples
             };
-            localStorage['RARelationBase'] = JSON.stringify(this.relationBase); // 存入本地存储
-            res('relation.writeSuccess'); // 写入成功
+            this.save(); // 存入本地存储
+            res([exist, 'relation.writeSuccess']); // 写入成功
         })
+    },
+    writeSingleVal: function (name, val, row, col) { // 单独写入一个值(关系名,值,行,列)
+        this.relationBase[name]['tuples'][row][col] = val;
+        this.save(); // 存入本地存储
+    },
+    moveTuple: function (name, row, targetRow) { // 移动元组(关系名,行,目标行)
+        let tuples = this.relationBase[name]['tuples'],
+            moving = tuples[row], // 要移动的元组
+            maxInd = tuples.length - 1; // 最大索引
+        if (targetRow > maxInd) { // 目标行超出范围
+            targetRow = 0; // 目标行超出范围，则目标行设为0
+        } else if (targetRow < 0) { // 目标行小于0
+            targetRow = maxInd; // 目标行小于0，则目标行设为最大索引
+        }
+        tuples.splice(row, 1); // 删除原位置的元组
+        tuples.splice(targetRow, 0, moving); // 插入目标位置
+        this.relationBase[name]['tuples'] = tuples; // 更新关系表
+        this.save(); // 存入本地存储
+        return [true, targetRow]; // 返回目标行
+    },
+    insertEmptyTuple: function (name, row) { // 插入空元组(关系名,行)
+        let relation = this.relationBase[name],
+            tuples = relation['tuples'],
+            attrsNum = relation['attrs'].length, // 属性数量
+            newTuple = new Array(attrsNum).fill(''); // 新的空元组
+        tuples.splice(row, 0, newTuple); // 插入空元组
+        this.relationBase[name]['tuples'] = tuples; // 更新关系表
+        this.save(); // 存入本地存储
+        return [true, row];
+    },
+    delTuple: function (name, row) { // 删除元组(关系名,行)
+        let tuples = this.relationBase[name]['tuples'],
+            tuplesNum = tuples.length;
+        if (tuplesNum > 1) { // 起码要有一个元组
+            tuples.splice(row, 1); // 删除元组
+            this.save(); // 存入本地存储
+            return [true, row];
+        } else {
+            return [false, 'relation.noEnoughTuple'];
+        }
     },
     del: function (name) { // 删除关系表
         delete this.relationBase[name];
-        localStorage['RARelationBase'] = JSON.stringify(this.relationBase); // 存入本地存储
+        this.save(); // 存入本地存储
     }
 };

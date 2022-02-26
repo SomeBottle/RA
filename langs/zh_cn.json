@@ -22,6 +22,7 @@
         "relationItem.del": "删除",
         "relation.noItem": "这儿空空如也，去添加点关系吧",
         "relation.delConfirm": "确定要删除这个关系吗？",
+        "relation.noEnoughTuple": "咱至少留个元组吧",
         "relation.translation": "关系"
     },
     "notice": {
