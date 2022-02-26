@@ -191,7 +191,6 @@ const basicView = { // 基础视图
             waitBar = s('.formInput .waitBar'), // 清除进度条
             csvInput = s('#csvForm'), // csv输入框
             nameInput = s('#relationName'); // 关系名输入框
-        ev.preventDefault();
         applyStyle(waitBar, {
             'width': '100%',
             'height': '100%',
