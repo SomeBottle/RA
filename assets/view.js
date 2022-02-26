@@ -1,3 +1,4 @@
+/*RA 0.0.1*/
 /*视图部分*/
 'use strict';
 var s = (selector, all = false) => all ? document.querySelectorAll(selector) : document.querySelector(selector);/*简化一下选择器*/
@@ -207,14 +208,12 @@ const basicView = { // 基础视图
             window.removeEventListener('mouseup', abort, false);
             window.removeEventListener('touchend', abort, false); // 移除事件
             window.removeEventListener('mousemove', abort, false);
-            window.removeEventListener('touchmove', abort, false);
             bv.abortClear();
         }
         window.addEventListener('mouseup', abort, false); // 在鼠标抬起时取消清除
         window.addEventListener('touchend', abort, false); // 适应移动端
         setTimeout(() => { // 移动事件需要稍微延迟一下
-            window.addEventListener('mousemove', abort, false); // 鼠标移动就取消清除（这样可以划选内容）
-            window.addEventListener('touchmove', abort, false); // 适应移动端
+            window.addEventListener('mousemove', abort, false); // (电脑端)鼠标移动就取消清除（这样可以划选内容）
         }, 100);
     },
     abortClear: function () { // 取消/停止清除
