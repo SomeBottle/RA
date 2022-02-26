@@ -189,6 +189,8 @@ const basicView = { // 基础视图
     },
     startClear: function (ev) { // 开始准备清除输入框
         let bv = this,
+            touchSupported = ("ontouchstart" in window), // 支持touchEvent与否
+            waitTime = touchSupported ? 1200 : 1000, // 支持touchEvent等的时间长一点
             waitBar = s('.formInput .waitBar'), // 清除进度条
             csvInput = s('#csvForm'), // csv输入框
             nameInput = s('#relationName'); // 关系名输入框
@@ -199,21 +201,26 @@ const basicView = { // 基础视图
         });
         clearTimeout(bv.timerForReset); // 清除先前的计时器，防止重复
         bv.timerForReset = setTimeout(() => {
+            csvInput.blur(); // 失去焦点
             csvInput.value = '';
             nameInput.value = ''; // 清空输入框
             bv.abortClear(); // 调用一次取消清除函数来让进度条返回初始状态
             bv.nameInputChecker(); // 重设按钮文本
-        }, 1000);
+        }, waitTime);
         function abort() {
             window.removeEventListener('mouseup', abort, false);
             window.removeEventListener('touchend', abort, false); // 移除事件
+            window.removeEventListener('touchcancel', abort, false);
             window.removeEventListener('mousemove', abort, false);
+            window.removeEventListener('touchmove', abort, false);
             bv.abortClear();
         }
+        window.addEventListener('touchcancel', abort, false); // (支持touchEvent)选中文本时取消清除
+        window.addEventListener('touchend', abort, false); // (支持touchEvent)触点消失时取消清除
         window.addEventListener('mouseup', abort, false); // 在鼠标抬起时取消清除
-        window.addEventListener('touchend', abort, false); // 适应移动端
         setTimeout(() => { // 移动事件需要稍微延迟一下
-            window.addEventListener('mousemove', abort, false); // (电脑端)鼠标移动就取消清除（这样可以划选内容）
+            if (!touchSupported) window.addEventListener('mousemove', abort, false); // (不支持touchEvent)鼠标移动就取消清除（这样可以划选内容）
+            window.addEventListener('touchmove', abort, false); // 考虑支持touchEvent的情况(touchmove和上一行mousemove有冲突，所以在支持touch的时候就用touchmove)
         }, 100);
     },
     abortClear: function () { // 取消/停止清除
