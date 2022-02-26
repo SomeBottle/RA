@@ -186,11 +186,12 @@ const basicView = { // 基础视图
                 formInput.ontouchstart = bv.startClear.bind(bv); // 适应移动端
             })
     },
-    startClear: function () { // 开始准备清除输入框
+    startClear: function (ev) { // 开始准备清除输入框
         let bv = this,
             waitBar = s('.formInput .waitBar'), // 清除进度条
             csvInput = s('#csvForm'), // csv输入框
             nameInput = s('#relationName'); // 关系名输入框
+        ev.preventDefault();
         applyStyle(waitBar, {
             'width': '100%',
             'height': '100%',
