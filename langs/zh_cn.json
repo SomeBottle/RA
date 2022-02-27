@@ -11,6 +11,7 @@
         "relation.enterNameHere": "在这里输入关系名",
         "algebra.inputTip": "在此输入关系代数",
         "algebra.execute": "执行",
+        "algebra.empty": "写点内容再执行吧",
         "algebra.executeTip": "回车也可以执行哦"
     },
     "relationView": {
@@ -24,6 +25,9 @@
         "relation.delConfirm": "确定要删除这个关系吗？",
         "relation.noEnoughTuple": "咱至少留个元组吧",
         "relation.translation": "关系"
+    },
+    "interpreter": {
+        "syntaxError.parenthesisLeft": "语法错误：括号未闭合"
     },
     "notice": {
         "relation.nameRequired": "关系名不能为空",

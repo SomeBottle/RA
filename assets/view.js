@@ -185,6 +185,14 @@ const basicView = { // 基础视图
                 s('#relationName').addEventListener('input', bv.nameInputChecker, false); // 在关系名输入框加上监听器
                 formInput.onmousedown = bv.startClear.bind(bv); // 长按csv输入框清空
                 formInput.ontouchstart = bv.startClear.bind(bv); // 适应移动端
+                s('.execBtn').onclick = () => { // 执行关系代数
+                    let program = s('.algebraInput').value;
+                    if (program.notEmpty()) {
+                        interpreter.understand(program); // 送至解释器
+                    } else {
+                        bv.notice(bv.getLang('basicView > algebra.empty'));
+                    }
+                };
             })
     },
     startClear: function (ev) { // 开始准备清除输入框
