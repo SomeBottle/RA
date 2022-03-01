@@ -133,13 +133,13 @@ const basicView = { // 基础视图
             csvInput = s('#csvForm'),
             inputElem = s('#relationName'),
             relaName = inputElem.value,
-            relation = relations.relationBase[relaName];
+            relation = new Relations(relaName).base;
         if (relation) {
             // 在输入存在的表单后自动还原成CSV格式
             // 先还原成表格数组
             let tableArr = [relation['attrs']].concat(relation['tuples']);
             bv.modifyingCSV = true;
-            csvInput.value = relations.toCsv(tableArr);
+            csvInput.value = Relations.toCsv(tableArr);
             s('.add').innerHTML = bv.getLang('basicView > relation.modify'); // 更改按钮文字为编辑
         } else if (bv.modifyingCSV) { // 之前刚刚编辑过表单，现在没有编辑了而是新增
             bv.modifyingCSV = false;
@@ -286,7 +286,7 @@ const relationView = { // 关系表相关的视图
             nameInput = s('#relationName'); // 关系名输入框
         basicView.float("relationThumb", (resp) => {
             let template = resp, // relationThumb.html是模板
-                relas = relations.relationBase, // 临时引用关系集
+                relas = new Relations().base, // 临时引用关系集
                 rendered = ''; // 渲染后的html
             for (let i in relas) { // 遍历关系表集
                 let temp = template.replaceTp('relationName', i); // 替换模板中的关系名
@@ -301,6 +301,7 @@ const relationView = { // 关系表相关的视图
                     name = parentThumb.getAttribute('data-name'), // 获得关系名
                     csvBtn = foot.querySelector('.csvBtn'), // 获得csv按钮
                     delBtn = foot.querySelector('.delBtn'), // 获得删除按钮
+                    relationObj = new Relations(name).base,
                     editCSV = () => {
                         bv.closeFloat();
                         nameInput.value = name; // 填充关系名
@@ -310,7 +311,7 @@ const relationView = { // 关系表相关的视图
                     delRela = () => {
                         if (confirm(bv.getLang('relationView > relation.delConfirm'))) {
                             delBtn.removeEventListener('click', delRela, false);
-                            relations.del(name); // 删除关系表
+                            relationObj.del(); // 删除关系表
                             parentThumb.remove(); // 重新渲染
                         }
                     }
@@ -365,7 +366,7 @@ const relationView = { // 关系表相关的视图
         let rv = this,
             bv = basicView,
             template = rv.modifyTemplate['table'], // 获得表格模板
-            relation = relations.relationBase[name], // 获得要编辑的关系表
+            relation = new Relations(name).base, // 获得要编辑的关系表
             relaAttrs = relation['attrs'],
             relaTuples = relation['tuples'],
             relaSpan = relaAttrs.length, // 获得关系表的属性数量
@@ -414,19 +415,20 @@ const relationView = { // 关系表相关的视图
             rowElem = elem.parentNode.parentNode, // 获得当前行
             rowInd = Number(rowElem.getAttribute('data-row')), // 获得点击的元组行号
             tableElem = s('.relationDetail'),// 获得关系表展示元素
-            result = '';
+            result = '',
+            relationObj = new Relations(name);
         switch (action) {
             case 'forward':
-                result = relations.moveTuple(name, rowInd, rowInd - 1);
+                result = relationObj.moveTuple(rowInd, rowInd - 1);
                 break;
             case 'backward':
-                result = relations.moveTuple(name, rowInd, rowInd + 1);
+                result = relationObj.moveTuple(rowInd, rowInd + 1);
                 break;
             case 'insert':
-                result = relations.insertEmptyTuple(name, rowInd);
+                result = relationObj.insertEmptyTuple(rowInd);
                 break;
             case 'del':
-                result = relations.delTuple(name, rowInd);
+                result = relationObj.delTuple(rowInd);
                 break;
         }
         let [success, msg] = result;
@@ -454,7 +456,7 @@ const relationView = { // 关系表相关的视图
                 let newVal = modifiedVal.value,
                     // NULL字符串转换成null
                     content = (newVal.toLowerCase() == 'null') ? null : newVal;
-                relations.writeSingleVal(name, content, row, column);
+                new Relations(name).writeSingleVal(content, row, column);
                 cell.innerHTML = newVal; // 更新单元格内容
                 cancelModify();
             },
@@ -488,9 +490,9 @@ const relationView = { // 关系表相关的视图
             csvContent = csvInput.value,
             nameInput = s('#relationName'),
             name = nameInput.value.trim(), // 获得关系表名
-            parsed = relations.parseCsv(csvContent); // 解析CSV为数组
+            parsed = Relations.parseCsv(csvContent); // 解析CSV为数组
         if (name.notEmpty()) {
-            relations.write(name, parsed).then(resArr => {
+            new Relations(name).write(parsed).then(resArr => {
                 /* 这里resolve的是一个数组:[是否是在编辑已有关系,成功消息] */
                 csvInput.value = '';
                 nameInput.value = ''; // 提交后清空表单
@@ -505,3 +507,15 @@ const relationView = { // 关系表相关的视图
         }
     }
 };
+/*Testing code*/
+setTimeout(() => {
+    s('.algebraInput').value = `PROJECT{columnA}(COURSE)
+EXCEPT
+PROJECT{columnA}(
+    (SELECT{NAME='233'}(STUDENT)) 
+    JOIN
+    (SC)
+    JOIN
+    (TEST)
+)`;
+}, 500);
