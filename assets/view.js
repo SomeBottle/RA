@@ -26,21 +26,22 @@ String.prototype.notEmpty = function () {
     return str && !str.match(/^\s*$/);
 }
 
-const applyStyle = (elemArr, styleObj, delay = false) => { // 批量应用样式(元素/元素数组,样式对象,应用延迟)
-    elemArr = Array.isArray(elemArr) ? elemArr : [elemArr]; // 支持单一元素
-    let apply = () => {
-        elemArr.forEach(elem => {
-            if (elem instanceof Element) {
-                for (let key in styleObj) elem.style[key] = styleObj[key]; // 应用样式
-            }
-        });
-    };
-    if (delay) { // 延迟应用样式
-        setTimeout(apply, delay);
-    } else {
-        apply();
+const relaObj = new Relations(),
+    applyStyle = (elemArr, styleObj, delay = false) => { // 批量应用样式(元素/元素数组,样式对象,应用延迟)
+        elemArr = Array.isArray(elemArr) ? elemArr : [elemArr]; // 支持单一元素
+        let apply = () => {
+            elemArr.forEach(elem => {
+                if (elem instanceof Element) {
+                    for (let key in styleObj) elem.style[key] = styleObj[key]; // 应用样式
+                }
+            });
+        };
+        if (delay) { // 延迟应用样式
+            setTimeout(apply, delay);
+        } else {
+            apply();
+        }
     }
-}
 
 const basicView = { // 基础视图
     langList: {},
@@ -133,7 +134,7 @@ const basicView = { // 基础视图
             csvInput = s('#csvForm'),
             inputElem = s('#relationName'),
             relaName = inputElem.value,
-            relation = new Relations(relaName).base;
+            relation = relaObj.x(relaName).base;
         if (relation) {
             // 在输入存在的表单后自动还原成CSV格式
             // 先还原成表格数组
@@ -286,7 +287,7 @@ const relationView = { // 关系表相关的视图
             nameInput = s('#relationName'); // 关系名输入框
         basicView.float("relationThumb", (resp) => {
             let template = resp, // relationThumb.html是模板
-                relas = new Relations().base, // 临时引用关系集
+                relas = relaObj.x().base, // 临时引用关系集
                 rendered = ''; // 渲染后的html
             for (let i in relas) { // 遍历关系表集
                 let temp = template.replaceTp('relationName', i); // 替换模板中的关系名
@@ -301,7 +302,7 @@ const relationView = { // 关系表相关的视图
                     name = parentThumb.getAttribute('data-name'), // 获得关系名
                     csvBtn = foot.querySelector('.csvBtn'), // 获得csv按钮
                     delBtn = foot.querySelector('.delBtn'), // 获得删除按钮
-                    relationObj = new Relations(name).base,
+                    relationObj = relaObj.x(name).base,
                     editCSV = () => {
                         bv.closeFloat();
                         nameInput.value = name; // 填充关系名
@@ -366,7 +367,7 @@ const relationView = { // 关系表相关的视图
         let rv = this,
             bv = basicView,
             template = rv.modifyTemplate['table'], // 获得表格模板
-            relation = new Relations(name).base, // 获得要编辑的关系表
+            relation = relaObj.x(name).base, // 获得要编辑的关系表
             relaAttrs = relation['attrs'],
             relaTuples = relation['tuples'],
             relaSpan = relaAttrs.length, // 获得关系表的属性数量
@@ -416,7 +417,7 @@ const relationView = { // 关系表相关的视图
             rowInd = Number(rowElem.getAttribute('data-row')), // 获得点击的元组行号
             tableElem = s('.relationDetail'),// 获得关系表展示元素
             result = '',
-            relationObj = new Relations(name);
+            relationObj = relaObj.x(name);
         switch (action) {
             case 'forward':
                 result = relationObj.moveTuple(rowInd, rowInd - 1);
@@ -456,7 +457,7 @@ const relationView = { // 关系表相关的视图
                 let newVal = modifiedVal.value,
                     // NULL字符串转换成null
                     content = (newVal.toLowerCase() == 'null') ? null : newVal;
-                new Relations(name).writeSingleVal(content, row, column);
+                relaObj.x(name).writeSingleVal(content, row, column);
                 cell.innerHTML = newVal; // 更新单元格内容
                 cancelModify();
             },
@@ -492,7 +493,7 @@ const relationView = { // 关系表相关的视图
             name = nameInput.value.trim(), // 获得关系表名
             parsed = Relations.parseCsv(csvContent); // 解析CSV为数组
         if (name.notEmpty()) {
-            new Relations(name).write(parsed).then(resArr => {
+            relaObj.x(name).write(parsed).then(resArr => {
                 /* 这里resolve的是一个数组:[是否是在编辑已有关系,成功消息] */
                 csvInput.value = '';
                 nameInput.value = ''; // 提交后清空表单

@@ -1,7 +1,9 @@
 /* 关系代数解释器 */
 'use strict';
 const interpreter = {
-    syntaxes: { // 语法正则匹配
+    operators: { // 语法正则匹配
+        'select': [/SELECT\{.+?\}/i, /选择\{.+?\}/, /σ\{.+?\}/], // 选择
+        'project': [/PROJECT\{.+?\}/i, /投影\{.+?\}/, /π\{.+?\}/], // 投影
         'union': [/^UNION$/i, /^并$/, /^∪$/], // 并集
         'except': [/^EXCEPT$/i, /^减$/, /^-$/], // 差集
         'intersect': [/^INTERSECT$/i, /^交$/, /^∩$/], // 交集
@@ -11,8 +13,21 @@ const interpreter = {
         'leftjoin': [/^LJOIN$/i, /^左连接$/, /^⟕$/], // 左连接
         'rightjoin': [/^RJOIN$/i, /^右连接$/, /^⟖$/], // 右连接
         'thetajoin': [/^JOIN\{[\s\S]+?\}$/i, /^连接\{[\s\S]+?\}$/, /^⨝\{[\s\S]+?\}$/], // θ连接
-        'naturaljoin': [/^JOIN$/i, /^自然连接$/, /^⨝$/], // 自然连接
-        'select': [/^SELECT$/i, /^选择$/, /^∪$/], // 选择
+        'naturaljoin': [/^JOIN$/i, /^自然连接$/, /^⨝$/] // 自然连接
+    },
+    oprtPriorities: { // 运算符优先级(数字越大越优先运算)
+        'union': 1,
+        'except': 1,
+        'intersect': 1,
+        'crossjoin': 1,
+        'dividedby': 1,
+        'outerjoin': 1,
+        'leftjoin': 1,
+        'rightjoin': 1,
+        'thetajoin': 1,
+        'naturaljoin': 1,
+        'select': 2,
+        'project': 2
     },
     understand: function (statements) { // 解释语句
         /* 括号层次分析，下面展示一下储存结构
@@ -69,10 +84,36 @@ const interpreter = {
         */
         if (depth !== 0) throw bv.getLang('interpreter > syntaxError.parenthesisLeft'); // 括号未闭合错误
         strLayers = strLayers.slice(0, -1).reverse(); // （原数组最后会多出来一个值，用slice去掉）
+        let parentheses = /^(\(|\))+?$/, //全都是括号的情况
+            results = []; // 运算结果
+        for (let i = 0, len = strLayers.length; i < len; i++) {
+            let strLayer = strLayers[i],
+                operations = []; // 当前层的操作指令
+            strLayer.forEach(thesis => {
+                let spaced = thesis.split(/\s/).filter(x => x && x.trim() && !x.match(parentheses)); // 去除多余空格和纯括号
+                for (let j = 0, len = spaced.length; j < len; j++) {
+                    operations.push(this.findOperator(spaced[j])); // 遍历操作符
+                }
+            });
+            for (let x = 0, len = operations.length; x < len; x++) { // 遍历本层指令
+                let oprt = operations[x];
+                if (!oprt) { // 没有找到对应的操作符
+                    let relation=strLayer[x].slice(1,-1); // 获得指令对应的关系名
+                }
+            }
+            console.log(operations, 'layer:', i);
+        }
         console.log(strLayers);
     },
-    layerReader: function (statements) { // 读取一层中的语句并理解意思
-        let spaced = statements.split(/\s/).filter(x => x && x.trim()); // 按空格将语句分开
-        console.log(spaced);
+    findOperator(str) { // 寻找语句匹配的操作
+        for (let i in this.operators) {
+            let item = this.operators[i];
+            for (let j = 0, len = item.length; j < len; j++) {
+                if (item[j].test(str)) {
+                    return i; // 返回操作符的key
+                }
+            }
+        }
+        return ''; // 匹配不到说明是关系或者非法语句，先暂留空字符串
     }
 };

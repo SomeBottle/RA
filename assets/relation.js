@@ -1,11 +1,16 @@
 /*关系表处理部分*/
 'use strict';
-const Relations = function (name = false) { // 关系表处理构造函数(关系名)
+const Relations = function () { // 关系表处理构造函数(关系名)
     var prevRelationBase = localStorage['RARelationBase'], // 读取本地的关系集
         relationBase = prevRelationBase ? JSON.parse(prevRelationBase) : {};
-    this.name = name;
-    this.base = name !== false ? relationBase[name] : relationBase; // 返回关系表/关系集
-
+    this.x = function (name = false) { // 针对关系表名
+        this.name = name;
+        this.base = name !== false ? relationBase[name] : relationBase; // 返回关系表/关系集
+        return this;
+    }
+    this.exists = function (name) { // 判断关系表是否存在
+        return relationBase[name] ? true : false;
+    }
     this.save = function () { // 存入本地存储
         localStorage['RARelationBase'] = JSON.stringify(relationBase);
     }
