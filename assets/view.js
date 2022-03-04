@@ -302,7 +302,7 @@ const relationView = { // 关系表相关的视图
                     name = parentThumb.getAttribute('data-name'), // 获得关系名
                     csvBtn = foot.querySelector('.csvBtn'), // 获得csv按钮
                     delBtn = foot.querySelector('.delBtn'), // 获得删除按钮
-                    relationObj = relaObj.x(name).base,
+                    relationObj = relaObj.x(name),
                     editCSV = () => {
                         bv.closeFloat();
                         nameInput.value = name; // 填充关系名
@@ -510,7 +510,7 @@ const relationView = { // 关系表相关的视图
 };
 /*Testing code*/
 setTimeout(() => {
-    s('.algebraInput').value = `PROJECT{columnA}(COURSE)
+    s('.algebraInput').value = `PROJECT{columnA}(EXCEPT)
 EXCEPT
 PROJECT{columnA}(
     (SELECT{NAME='233'}(STUDENT)) 
@@ -518,5 +518,7 @@ PROJECT{columnA}(
     (SC)
     JOIN
     (TEST)
-)`;
+)
+UNION
+(EXCEPT)`;
 }, 500);
