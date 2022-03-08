@@ -180,8 +180,7 @@ textarea {
     color: #FFF;
 }
 
-.floatLayer,
-.relationLayer {
+.layer {
     position: absolute;
     display: none;
     opacity: 0;
@@ -201,11 +200,33 @@ textarea {
     z-index: 52;
 }
 
-.floatLayer .close,
-.relationLayer .close {
+.playLayer {
+    width: auto;
+    overflow: auto;
+    min-width: 100%;
+    z-index: 53;
+    background-color: #101010;
+}
+
+.playLayer canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+}
+
+.playLayer #tuples {
+    z-index: 55;
+}
+
+.playLayer #tables {
+    z-index: 54;
+    background-color: #101010;
+}
+
+.layer .close {
     display: block;
     position: fixed;
-    z-index: 53;
+    z-index: 100;
     right: 0;
     top: 0;
     text-decoration: none;
@@ -213,10 +234,6 @@ textarea {
     margin: .5em;
     font-size: 2em;
     line-height: .5em;
-}
-
-.relationLayer .close {
-    z-index: 60;
 }
 
 .floatContent,

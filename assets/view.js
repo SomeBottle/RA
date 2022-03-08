@@ -86,6 +86,7 @@ const basicView = { // 基础视图
         function callBack() {
             element.removeEventListener(chosenTester, callBack);
             func();
+            func = null;
         }
         element.addEventListener(chosenTester, callBack);
     },
@@ -263,7 +264,7 @@ const basicView = { // 基础视图
         }, 50);
         funcOnResp = null;
     },
-    closeFloat: function () {
+    close: function () {
         let fl = s('.floatLayer'),
             fc = s('.floatContent'),
             bv = this;
@@ -304,7 +305,7 @@ const relationView = { // 关系表相关的视图
                     delBtn = foot.querySelector('.delBtn'), // 获得删除按钮
                     relationObj = relaObj.x(name),
                     editCSV = () => {
-                        bv.closeFloat();
+                        bv.close();
                         nameInput.value = name; // 填充关系名
                         bv.nameInputChecker(); // 触发编辑
                         csvBtn.removeEventListener('click', editCSV, false);
@@ -330,7 +331,7 @@ const relationView = { // 关系表相关的视图
             'opacity': 1
         }, 50);
     },
-    closeFloat: function () {
+    close: function () {
         let tl = s('.relationLayer'),
             tc = s('.relationContent');
         tl.style.opacity = 0;
@@ -508,6 +509,24 @@ const relationView = { // 关系表相关的视图
         }
     }
 };
+
+const playView = { // 演示视图
+    show: function () {
+        let layer = s('.playLayer');
+        layer.style.display = 'block';
+        setTimeout(() => {
+            layer.style.opacity = '1';
+        }, 10);
+    },
+    close: function () {
+        let layer = s('.playLayer'),
+            bv = basicView;
+        layer.style.opacity = '0';
+        bv.motionChecker(layer, () => {
+            layer.style.display = 'none';
+        });
+    }
+};
 /*Testing code*/
 setTimeout(() => {
     s('.algebraInput').value = `PROJECT{columnA}(EXCEPT)
@@ -522,3 +541,12 @@ PROJECT{columnA}(
 UNION
 (EXCEPT)`;
 }, 500);
+
+playView.show()
+let playObj = new Plays(s('.playLayer > #tables')),
+    table1 = new Relations().x('STUDENT').base,
+    table2 = new Relations().x('SC').base,
+    [canvasWd, canvasHt] = playObj.measureTable([table1, table2], 20, 10);
+playObj.setSize(canvasWd, canvasHt);
+let [tableWd, tableHt] = playObj.drawTable(table1, 20, 10);
+playObj.drawTable(table2, 20, 10, tableWd);

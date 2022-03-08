@@ -31,14 +31,19 @@
             <a href="javascript:void(0);" data-src="how2use-{[menu.language]}">{[menu.howToUse]}</a> | <a href="javascript:void(0);">{[menu.selLang]}</a> | <a href="javascript:void(0);">{[menu.example]}</a>
         </div>
     </div>
-    <div class="floatLayer" style="opacity: 0;"><a class="close" href="javascript:void(0);" onclick="basicView.closeFloat()">×</a>
+    <div class="floatLayer layer"><a class="close" href="javascript:void(0);" onclick="basicView.close()">×</a>
         <div class="floatContent"></div>
     </div>
-    <div class="relationLayer" style="opacity: 0;"><a class="close" href="javascript:void(0);" onclick="relationView.closeFloat()">×</a>
+    <div class="relationLayer layer"><a class="close" href="javascript:void(0);" onclick="relationView.close()">×</a>
         <div class="relationContent"></div>
     </div>
+    <div class="playLayer layer"><a class="close" href="javascript:void(0);" onclick="playView.close()">×</a>
+        <canvas id="tuples"></canvas>
+        <canvas id="tables"></canvas>
+    </div>
     <div class="loadingText">Loading(°ー°〃)</div>
-    <div class="notice"><span>Language config load error.</span><a href="javascript:void(0);" onclick="basicView.closeNotice()">OK!</a></div>
+    <div class="notice"><span></span><a href="javascript:void(0);" onclick="basicView.closeNotice()">OK!</a></div>
+    <script src="./assets/play.js"></script>
     <script src="./assets/relation.js"></script>
     <script src="./assets/interpreter.js"></script>
     <script src="./assets/view.js"></script>
