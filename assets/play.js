@@ -3,31 +3,35 @@
 SomeBottle 20220305
 */
 'use strict';
-const Plays = function (target) {
+const Plays = function (targetElem) {
+    let context = targetElem.getContext('2d'),
+        initStyle = function () {
+            // 设置绘制样式
+            context.textAlign = 'center'; // 文字水平居中
+            context.textBaseline = 'middle'; // 文字基线居中
+            context.font = '1em Fira Code, Monaco, Consolas, Ubuntu Mono, PingFang SC, Hiragino Sans GB, Microsoft YaHei, WenQuanYi Micro Hei, monospace, sans-serif';
+            context.fillStyle = '#FAFAFA';
+            context.strokeStyle = '#FFF';
+            context.lineWidth = 1; // 线宽
+        };
+    this.target = targetElem;
+    this.context = context;
     this.cellPaddingX = 10; // 单元格的水平padding
     this.cellPaddingY = 10; // 单元格的垂直padding
-    this.target = target; // 初始化操作目标
+    initStyle(); // 初始化样式
     this.setSize = function (canvasW, canvasH) {
-        let canvas = this.target;
+        let canvas = targetElem;
         canvas.width = canvasW;
         canvas.height = canvasH;
+        initStyle(); // resize后canvas属性会归为默认，重新初始化
     }
     this.columnSize = function (table) { // 返回关系表所有的列宽列高(关系表,x轴边缘,y轴边缘)
-        let ctx = this.target.getContext('2d'), // 创建画布对象
+        let ctx = this.context, // 创建画布对象
             sizes = [[], []],
             columnNum = table[0].length,
             height = [],
             paddingX = this.cellPaddingX,
             paddingY = this.cellPaddingY;
-        // 设置绘制样式
-        ctx.textAlign = 'center'; // 文字水平居中
-        ctx.textBaseline = 'middle'; // 文字基线居中
-        ctx.font = '1em Fira Code, Monaco, Consolas, Ubuntu Mono, PingFang SC, Hiragino Sans GB, Microsoft YaHei, WenQuanYi Micro Hei, monospace, sans-serif';
-        ctx.fillStyle = '#FAFAFA';
-        ctx.strokeStyle = '#FFF';
-        ctx.lineWidth = 1; // 线宽
-        ctx.save();
-        // 绘制样式设置结束
         for (let i = 0; i < columnNum; i++) {
             let width = 0;
             for (let j = 0, len = table.length; j < len; j++) {
@@ -69,8 +73,7 @@ const Plays = function (target) {
         绘制关系表(关系对象,x轴margin,y轴margin,x轴偏差,y轴偏差)
         返回：[当前表的宽,当前表的高]
         */
-        let canvas = this.target,
-            ctx = canvas.getContext('2d'), // 创建画布对象
+        let ctx = this.context, // 创建画布对象
             table = Array.from(relaObj['tuples']); // 浅拷贝
         table.splice(0, 0, relaObj['attrs']); // 将属性名放入表中
         let [widths, heights] = this.columnSize(table),

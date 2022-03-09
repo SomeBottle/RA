@@ -527,7 +527,9 @@ const playView = { // 演示视图
         });
     }
 };
-/*Testing code*/
+
+
+// Testing code below
 setTimeout(() => {
     s('.algebraInput').value = `PROJECT{columnA}(EXCEPT)
 EXCEPT
@@ -542,11 +544,13 @@ UNION
 (EXCEPT)`;
 }, 500);
 
-playView.show()
-let playObj = new Plays(s('.playLayer > #tables')),
-    table1 = new Relations().x('STUDENT').base,
-    table2 = new Relations().x('SC').base,
-    [canvasWd, canvasHt] = playObj.measureTable([table1, table2], 20, 10);
-playObj.setSize(canvasWd, canvasHt);
-let [tableWd, tableHt] = playObj.drawTable(table1, 20, 10);
-playObj.drawTable(table2, 20, 10, tableWd);
+playView.show();
+window.onload = () => {
+    let playObj = new Plays(s('.playLayer > #tables')),
+        table1 = new Relations().x('STUDENT').base,
+        table2 = new Relations().x('SC').base,
+        [canvasWd, canvasHt] = playObj.measureTable([table1, table2], 20, 10);
+    playObj.setSize(canvasWd, canvasHt);
+    let [tableWd, tableHt] = playObj.drawTable(table1, 20, 10);
+    playObj.drawTable(table2, 20, 10, tableWd);
+}
