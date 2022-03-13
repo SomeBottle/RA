@@ -546,11 +546,15 @@ UNION
 
 playView.show();
 window.onload = () => {
-    let playObj = new Plays(s('.playLayer > #tables')),
+    let playObj = Plays.x(s('.playLayer > #tables')),
         table1 = new Relations().x('STUDENT').base,
         table2 = new Relations().x('SC').base,
         [canvasWd, canvasHt] = playObj.measureTable([table1, table2], 20, 10);
     playObj.setSize(canvasWd, canvasHt);
-    let [tableWd, tableHt] = playObj.drawTable(table1, 20, 10);
+    let [tableWd, tableHt, cellsInfo] = playObj.drawTable(table1, 20, 10);
     playObj.drawTable(table2, 20, 10, tableWd);
+    let cells2mask = cellsInfo.flat().slice(3, 8);
+    playObj.maskCells(cells2mask);
+    let playObj2 = Plays.x(s('.playLayer > #tuples'));
+    playObj2.setSize(canvasWd, canvasHt * 2);
 }

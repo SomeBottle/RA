@@ -3,29 +3,33 @@
 SomeBottle 20220305
 */
 'use strict';
-const Plays = function (targetElem) {
-    let context = targetElem.getContext('2d'),
-        initStyle = function () {
-            // 设置绘制样式
-            context.textAlign = 'center'; // 文字水平居中
-            context.textBaseline = 'middle'; // 文字基线居中
-            context.font = '1em Fira Code, Monaco, Consolas, Ubuntu Mono, PingFang SC, Hiragino Sans GB, Microsoft YaHei, WenQuanYi Micro Hei, monospace, sans-serif';
-            context.fillStyle = '#FAFAFA';
-            context.strokeStyle = '#FFF';
-            context.lineWidth = 1; // 线宽
-        };
-    this.target = targetElem;
-    this.context = context;
-    this.cellPaddingX = 10; // 单元格的水平padding
-    this.cellPaddingY = 10; // 单元格的垂直padding
-    initStyle(); // 初始化样式
-    this.setSize = function (canvasW, canvasH) {
-        let canvas = targetElem;
+const Plays = {
+    init: function () { // 初始化样式
+        let context = this.target.getContext('2d');
+        // 设置绘制样式
+        context.textAlign = 'center'; // 文字水平居中
+        context.textBaseline = 'middle'; // 文字基线居中
+        context.font = '1em Fira Code, Monaco, Consolas, Ubuntu Mono, PingFang SC, Hiragino Sans GB, Microsoft YaHei, WenQuanYi Micro Hei, monospace, sans-serif';
+        context.fillStyle = '#FAFAFA';
+        context.strokeStyle = '#FFF';
+        context.lineWidth = 1; // 线宽
+        context.save();
+        this.context = context;
+        this.cellPaddingX = 10; // 单元格的水平padding
+        this.cellPaddingY = 10; // 单元格的垂直padding
+    },
+    x: function (elem) {
+        this.target = elem;
+        this.init();
+        return this;
+    },
+    setSize: function (canvasW, canvasH) {
+        let canvas = this.target;
         canvas.width = canvasW;
         canvas.height = canvasH;
-        initStyle(); // resize后canvas属性会归为默认，重新初始化
-    }
-    this.columnSize = function (table) { // 返回关系表所有的列宽列高(关系表,x轴边缘,y轴边缘)
+        this.init(); // resize后canvas属性会归为默认，重新初始化
+    },
+    columnSize: function (table) { // 返回关系表所有的列宽列高(关系表,x轴边缘,y轴边缘)
         let ctx = this.context, // 创建画布对象
             sizes = [[], []],
             columnNum = table[0].length,
@@ -48,8 +52,8 @@ const Plays = function (targetElem) {
         }
         sizes[1] = height;
         return sizes;
-    }
-    this.measureTable = function (relaArr, marginX, marginY) {
+    },
+    measureTable: function (relaArr, marginX, marginY) {
         /* 测量关系表(关系对象数组,x轴偏差,y轴偏差)
            根据所有表宽高和margin运算并返回：
            [画布宽,画布高]
@@ -67,14 +71,15 @@ const Plays = function (targetElem) {
             canvasHt = canvasHt < marginHt ? marginHt : canvasHt;
         }
         return [canvasWd, canvasHt];
-    }
-    this.drawTable = function (relaObj, marginX, marginY, offsetX = 0, offsetY = 0) {
+    },
+    drawTable: function (relaObj, marginX, marginY, offsetX = 0, offsetY = 0) {
         /*
         绘制关系表(关系对象,x轴margin,y轴margin,x轴偏差,y轴偏差)
-        返回：[当前表的宽,当前表的高]
+        返回：[当前表的宽,当前表的高,单元格坐标以及宽高]
         */
-        let ctx = this.context, // 创建画布对象
-            table = Array.from(relaObj['tuples']); // 浅拷贝
+        let ctx = this.context, // 获得画布对象
+            table = Array.from(relaObj['tuples']), // 浅拷贝
+            cellsInfo = []; // 储存绘制每行每格的左上角坐标
         table.splice(0, 0, relaObj['attrs']); // 将属性名放入表中
         let [widths, heights] = this.columnSize(table),
             rowWidth = widths.reduce((a, b) => a + b + 2, 0), // 获取表的宽度
@@ -88,13 +93,17 @@ const Plays = function (targetElem) {
         ctx.moveTo(offsetX, offsetY);
         ctx.lineTo(offsetX, offsetY + columnHeight);
         for (let i = 0, len = table.length; i < len; i++) {
+            cellsInfo[i] = new Array();
             let row = table[i],
+                cellsRow = cellsInfo[i],
                 ht = heights.slice(0, i + 1).reduce((a, b) => a + b + 2, 0),
+                cellHeight = heights[i], // 获取单元格高度
                 y = offsetY + ht;
             ctx.moveTo(offsetX, y);
             ctx.lineTo(offsetX + rowWidth, y);
             for (let j = 0, len2 = row.length; j < len2; j++) {
                 let wd = widths.slice(0, j + 1).reduce((a, b) => a + b + 2, 0),
+                    cellWidth = widths[j], // 获取单元格宽度
                     x = offsetX + wd,
                     text = row[j],
                     textWd = widths[j],
@@ -104,12 +113,33 @@ const Plays = function (targetElem) {
                     ctx.lineTo(x, offsetY + columnHeight);
                 }
                 ctx.fillText(text, x - textWd / 2, y - textHt / 2);
+                // 记录画布中当前单元格的左上角坐标以及单元格宽高[x,y,cellWidth,cellHeight]（单元格右下角坐标减去单元格长宽）
+                cellsRow.push([x - cellWidth, y - cellHeight, cellWidth, cellHeight]);
             }
             verticalDrawn = true;
         }
         ctx.stroke();
         let tableWidth = rowWidth + marginX * 2,
             tableHeight = columnHeight + marginY * 2;
-        return [tableWidth, tableHeight];
+        return [tableWidth, tableHeight, cellsInfo];
+    },
+    maskCells: function (cells2mask) { // 遮住指定单元格，传入格式和cellsInfo一致
+        let ctx = this.context;
+        ctx.save();
+        ctx.fillStyle = '#101010';
+        ctx.strokeStyle = '#101010';
+        for (let i = 0, len = cells2mask.length; i < len; i++) {
+            let [cellX, cellY, cellWd, cellHt] = cells2mask[i];
+            cellX = cellX - 2;
+            cellY = cellY - 2;
+            cellWd = cellWd + 2;
+            cellHt = cellHt + 2;
+            ctx.fillRect(cellX, cellY, cellWd, cellHt);
+            ctx.strokeRect(cellX, cellY, cellWd, cellHt);
+        }
+        ctx.restore();
+    },
+    addCellsGroup: function (cells) {
+
     }
-}
+};
