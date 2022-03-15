@@ -4,6 +4,12 @@ SomeBottle 20220305
 */
 'use strict';
 const Plays = {
+    playList: [ // 演示列表
+
+    ],
+    tickList: [ // 动画计算队列
+
+    ],
     init: function () { // 初始化样式
         let context = this.target.getContext('2d');
         // 设置绘制样式
@@ -82,35 +88,39 @@ const Plays = {
             cellsInfo = []; // 储存绘制每行每格的左上角坐标
         table.splice(0, 0, relaObj['attrs']); // 将属性名放入表中
         let [widths, heights] = this.columnSize(table),
-            rowWidth = widths.reduce((a, b) => a + b + 2, 0), // 获取表的宽度
-            columnHeight = heights.reduce((a, b) => a + b + 2, 0); // 获取表的高度
+            rowWidth = widths.reduce((a, b) => a + b, 0), // 获取表的宽度
+            columnHeight = heights.reduce((a, b) => a + b, 0); // 获取表的高度
         ctx.restore();
-        let verticalDrawn = false; // 是否已经绘制了垂直线
+        let verticalDrawn = false, // 是否已经绘制了垂直线
+            rowsLen = table.length, // 表的行数
+            colsLen = table[0].length, // 表的列数
+            rowsLinesWidth = colsLen - 1, // 水平线占的总像素数
+            colsLinesWidth = rowsLen - 1; // 垂直线占的总像素数
         offsetX = offsetX + marginX;
         offsetY = offsetY + marginY;
         ctx.moveTo(offsetX, offsetY);
-        ctx.lineTo(offsetX + rowWidth, offsetY);
+        ctx.lineTo(offsetX + rowWidth + rowsLinesWidth, offsetY);
         ctx.moveTo(offsetX, offsetY);
-        ctx.lineTo(offsetX, offsetY + columnHeight);
-        for (let i = 0, len = table.length; i < len; i++) {
+        ctx.lineTo(offsetX, offsetY + columnHeight + colsLinesWidth);
+        for (let i = 0; i < rowsLen; i++) {
             cellsInfo[i] = new Array();
             let row = table[i],
                 cellsRow = cellsInfo[i],
-                ht = heights.slice(0, i + 1).reduce((a, b) => a + b + 2, 0),
+                ht = heights.slice(0, i + 1).reduce((a, b) => a + b, 0),
                 cellHeight = heights[i], // 获取单元格高度
-                y = offsetY + ht;
+                y = offsetY + ht + i; // 这里i代表当前的水平线条占的像素数
             ctx.moveTo(offsetX, y);
-            ctx.lineTo(offsetX + rowWidth, y);
+            ctx.lineTo(offsetX + rowWidth + rowsLinesWidth, y);
             for (let j = 0, len2 = row.length; j < len2; j++) {
-                let wd = widths.slice(0, j + 1).reduce((a, b) => a + b + 2, 0),
+                let wd = widths.slice(0, j + 1).reduce((a, b) => a + b, 0),
                     cellWidth = widths[j], // 获取单元格宽度
-                    x = offsetX + wd,
+                    x = offsetX + wd + j, // 这里j代表当前的竖直线条占的像素数
                     text = row[j],
                     textWd = widths[j],
                     textHt = heights[i]; // 获取文字宽高
                 if (!verticalDrawn) {
                     ctx.moveTo(x, offsetY);
-                    ctx.lineTo(x, offsetY + columnHeight);
+                    ctx.lineTo(x, offsetY + columnHeight + colsLinesWidth);
                 }
                 ctx.fillText(text, x - textWd / 2, y - textHt / 2);
                 // 记录画布中当前单元格的左上角坐标以及单元格宽高[x,y,cellWidth,cellHeight]（单元格右下角坐标减去单元格长宽）
@@ -123,23 +133,32 @@ const Plays = {
             tableHeight = columnHeight + marginY * 2;
         return [tableWidth, tableHeight, cellsInfo];
     },
-    maskCells: function (cells2mask) { // 遮住指定单元格，传入格式和cellsInfo一致
+    eraseCells: function (cells2mask) { // 遮住指定单元格，传入格式和cellsInfo一致
         let ctx = this.context;
         ctx.save();
-        ctx.fillStyle = '#101010';
         ctx.strokeStyle = '#101010';
         for (let i = 0, len = cells2mask.length; i < len; i++) {
             let [cellX, cellY, cellWd, cellHt] = cells2mask[i];
-            cellX = cellX - 2;
-            cellY = cellY - 2;
-            cellWd = cellWd + 2;
-            cellHt = cellHt + 2;
-            ctx.fillRect(cellX, cellY, cellWd, cellHt);
+            ctx.clearRect(cellX, cellY, cellWd, cellHt);
             ctx.strokeRect(cellX, cellY, cellWd, cellHt);
         }
         ctx.restore();
     },
-    addCellsGroup: function (cells) {
-
+    addCellsAni: function (cellsArr, animArr, step = false) {
+        // 添加单元格集动画(单元格数组,动画属性,插入在哪一步(默认最后))
+        let item = [cellsArr, animArr];
+        if (!step) {
+            this.playList.push(item);
+        } else {
+            this.playList.splice(step, 0, item);
+        }
+    },
+    tickAnim: function () { // 计算一次动画
+        for (let i = 0, len = this.tickList.length; i < len; i++) {
+            let [cellsArr, animArr] = this.tickList[i];
+            for (let j = 0, len2 = cellsArr.length; j < len2; j++) {
+                let cell = cellsArr[j];
+            }
+        }
     }
 };

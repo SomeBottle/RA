@@ -554,7 +554,7 @@ window.onload = () => {
     let [tableWd, tableHt, cellsInfo] = playObj.drawTable(table1, 20, 10);
     playObj.drawTable(table2, 20, 10, tableWd);
     let cells2mask = cellsInfo.flat().slice(3, 8);
-    playObj.maskCells(cells2mask);
+    playObj.eraseCells(cells2mask);
     let playObj2 = Plays.x(s('.playLayer > #tuples'));
     playObj2.setSize(canvasWd, canvasHt * 2);
 }
