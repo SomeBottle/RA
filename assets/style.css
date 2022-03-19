@@ -214,6 +214,10 @@ textarea {
     top: 0;
 }
 
+.playLayer #emphases {
+    z-index: 56;
+}
+
 .playLayer #tuples {
     z-index: 55;
 }

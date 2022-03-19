@@ -557,4 +557,8 @@ window.onload = () => {
     playObj.eraseCells(cells2mask);
     let playObj2 = Plays.x(s('.playLayer > #tuples'));
     playObj2.setSize(canvasWd, canvasHt * 2);
+    let cells1 = new cellsGroup(cells2mask);
+    console.log(cells1.cells);
+    cells1.draw();
+    window.cells1 = cells1;
 }

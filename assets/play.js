@@ -124,7 +124,7 @@ const Plays = {
                 }
                 ctx.fillText(text, x - textWd / 2, y - textHt / 2);
                 // 记录画布中当前单元格的左上角坐标以及单元格宽高[x,y,cellWidth,cellHeight]（单元格右下角坐标减去单元格长宽）
-                cellsRow.push([x - cellWidth, y - cellHeight, cellWidth, cellHeight]);
+                cellsRow.push([x - cellWidth, y - cellHeight, cellWidth, cellHeight, text]);
             }
             verticalDrawn = true;
         }
@@ -144,21 +144,119 @@ const Plays = {
         }
         ctx.restore();
     },
-    addCellsAni: function (cellsArr, animArr, step = false) {
-        // 添加单元格集动画(单元格数组,动画属性,插入在哪一步(默认最后))
-        let item = [cellsArr, animArr];
-        if (!step) {
-            this.playList.push(item);
-        } else {
-            this.playList.splice(step, 0, item);
+    framesMaker: function (curve, frames, init, end) {
+        /*
+            根据曲线生成帧数组，从init到end
+            (曲线,帧数,起始数值,结束数值)
+        */
+        let diff = end - init + 1, // 计算出首尾差值，这个相当于路程.
+            halfDiff = Math.floor(diff / 2), // 计算出首尾差值的一半(用于淡入淡出)
+            halfFrames = Math.floor(frames / 2),
+            acceleration = (diff * 2) / (frames ** 2), // 加速度a=2s/t^2
+            velo, // 初速度
+            finalFrames = []; // 最终输出帧数组
+        switch (curve) {
+            case 'easeIn': // 缓入
+                velo = 0;
+                break;
+            case 'easeOut':
+                let finalVelo = acceleration * frames; // Vt=0+a*t 末速度
+                velo = finalVelo; // 初速度最大
+                acceleration = -acceleration; // 加速度取反
+                break;
+            case 'easeInOut':
+                let leftFrames = frames - halfFrames,
+                    frames1 = this.framesMaker('easeIn', halfFrames, init, init + halfDiff - 1),
+                    frames2 = this.framesMaker('easeOut', leftFrames, init + halfDiff, end);
+                return frames1.concat(frames2);
+            default: // 线性匀速
+                acceleration = 0;
+                velo = diff / frames; // frames其实相当于时间
+                break;
         }
+        for (let i = 1; i < frames; i++) { // 时间从1开始，循环到frames-1
+            let currentVelo = velo + acceleration * i;
+            finalFrames.push(init);
+            init = init + currentVelo;
+        }
+        finalFrames.push(end); // 最后一帧
+        return finalFrames;
+    },
+    addCellsAni: function (cellsGroup, animArr, step = false) {
+        // 添加单元格集动画(单元格组,动画属性,插入在哪一步(默认最后))
+        
     },
     tickAnim: function () { // 计算一次动画
-        for (let i = 0, len = this.tickList.length; i < len; i++) {
-            let [cellsArr, animArr] = this.tickList[i];
-            for (let j = 0, len2 = cellsArr.length; j < len2; j++) {
-                let cell = cellsArr[j];
-            }
-        }
+        
     }
 };
+
+const cellsGroup = function (cells) { // 将多个单元格组合成一个单元格组进行操作
+    let firstCell = cells[0], // 取出第一个单元格
+        canvas = s('.playLayer > #tuples'),
+        emphasesCanvas = s('.playLayer > #emphases'),
+        ctx = canvas.getContext('2d'),
+        emphasesCtx = emphasesCanvas.getContext('2d'),
+        [originX, originY] = firstCell, // 单元格组的坐标是第一个单元格的坐标
+        [canvasWd, canvasHt] = [canvas.width, canvas.height];
+    emphasesCanvas.width = canvasWd; // 设置强调层宽高
+    emphasesCanvas.height = canvasHt;
+    [this.x, this.y] = [originX, originY];
+    this.cells = cells;
+    this.draw = function () { // 绘制单元格组
+        for (let i = 0, len = this.cells.length; i < len; i++) {
+            let [x, y, wd, ht, text] = this.cells[i];
+            ctx.save();
+            ctx.fillStyle = '#101010';
+            ctx.fillRect(x, y, wd, ht);
+            ctx.restore();
+            ctx.strokeRect(x, y, wd, ht);
+            ctx.fillText(text, x + wd / 2, y + ht / 2);
+        }
+    }
+    this.clear = function () {
+        ctx.clearRect(0, 0, canvasWd, canvasHt);
+    }
+    this.moveTo = function (x, y) { // 移动单元格组
+        let diffX = x - this.x,
+            diffY = y - this.y; // 计算移动的距离
+        [this.x, this.y] = [x, y]; // 更新首格坐标
+        for (let i = 0, len = this.cells.length; i < len; i++) { // 从第二个单元格开始移动
+            let cell = this.cells[i];
+            cell[0] += diffX;
+            cell[1] += diffY;
+        }
+        this.clear();
+        this.draw();
+    }
+    this.clearEmphases = function () {
+        emphasesCtx.clearRect(0, 0, canvasWd, canvasHt);
+    }
+    this.emphasize = function (r, g, b, a) { // 强调单元格组
+        emphasesCtx.fillStyle = `rgba(${r},${g},${b},${a})`;
+        for (let i = 0, len = this.cells.length; i < len; i++) {
+            let [x, y, wd, ht] = this.cells[i];
+            emphasesCtx.fillRect(x, y, wd, ht);
+        }
+    }
+}
+/*
+// Testing code
+function gene(pos) {
+    s('#emphases').width = '1920';
+    s('#emphases').height = '1080';
+    let ctx = s('#emphases').getContext('2d');
+    ctx.fillStyle = '#FFF';
+    ctx.clearRect(0, 0, 1920, 1080);
+    ctx.fillRect(pos, 30, 20, 20);
+}
+let current = 0;
+let result = Plays.framesMaker('easeInOut', 200, 0, 500);
+console.log(result);
+let animation = () => {
+    gene(result[current]);
+    current = current < result.length ? current + 1 : 0;
+    window.requestAnimationFrame(animation);
+};
+window.requestAnimationFrame(animation);
+*/
