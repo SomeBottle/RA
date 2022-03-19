@@ -1,47 +1,8 @@
 /*RA 0.0.1*/
 /*视图部分*/
 'use strict';
-var s = (selector, all = false) => all ? document.querySelectorAll(selector) : document.querySelector(selector);/*简化一下选择器*/
-/*在字符串原型链上加个寻找模板占位符的方法*/
-String.prototype.findTp = function () {
-    return this.matchAll(/\{\[(\S*?)\]\}/gi);/*使用?非贪心模式，防止没有空格的整段被匹配，利用matchAll识别正则分组*/
-}
-String.prototype.extractTp = function (flag, remove = false) { // 提取模板(占位符,是否移除HTML)，返回[提取出的模板,原模板内容(可选去除提取的部分)]
-    let splitOnce = this.split(new RegExp('\\{\\{' + flag + '\\}\\}', 'gi')),
-        template = remove ? this.replace(new RegExp('\\{\\{' + flag + '\\}\\}[\\s\\S]*?\\{\\{' + flag + 'End\\}\\}', 'gi'), '') : this;
-    if (splitOnce[1]) {
-        let extracted = splitOnce[1].split(new RegExp('\\{\\{' + flag + 'End\\}\\}', 'gi'))[0];
-        return [extracted, template];
-    } else {
-        return false;
-    }
-}
-/*在字符串原型链上加个替换模板占位符的方法*/
-String.prototype.replaceTp = function (from, to) {
-    return this.replace(new RegExp('\\{\\[' + from + '\\]\\}', 'gi'), to);
-}
-/*在字符串原型链上加一个判断是否不为空的方法*/
-String.prototype.notEmpty = function () {
-    let str = this;
-    return str && !str.match(/^\s*$/);
-}
 
-const relaObj = new Relations(),
-    applyStyle = (elemArr, styleObj, delay = false) => { // 批量应用样式(元素/元素数组,样式对象,应用延迟)
-        elemArr = Array.isArray(elemArr) ? elemArr : [elemArr]; // 支持单一元素
-        let apply = () => {
-            elemArr.forEach(elem => {
-                if (elem instanceof Element) {
-                    for (let key in styleObj) elem.style[key] = styleObj[key]; // 应用样式
-                }
-            });
-        };
-        if (delay) { // 延迟应用样式
-            setTimeout(apply, delay);
-        } else {
-            apply();
-        }
-    }
+const relaObj = new Relations();
 
 const basicView = { // 基础视图
     langList: {},
@@ -529,7 +490,8 @@ const playView = { // 演示视图
 };
 
 
-// Testing code below
+// Testing code below! 下方为测试代码
+
 setTimeout(() => {
     s('.algebraInput').value = `PROJECT{columnA}(EXCEPT)
 EXCEPT
@@ -545,6 +507,7 @@ UNION
 }, 500);
 
 playView.show();
+
 window.onload = () => {
     let playObj = Plays.x(s('.playLayer > #tables')),
         table1 = new Relations().x('STUDENT').base,
@@ -557,8 +520,18 @@ window.onload = () => {
     playObj.eraseCells(cells2mask);
     let playObj2 = Plays.x(s('.playLayer > #tuples'));
     playObj2.setSize(canvasWd, canvasHt * 2);
-    let cells1 = new cellsGroup(cells2mask);
-    console.log(cells1.cells);
+    let cells1 = new cellsGroup(cells2mask),
+        [endx, endy] = cells2mask[0];
+    //console.log(endx, endy);
+    let listIndex = Plays.addCellsAni(cells1, ['movement', 100, 'easeInOut', [endx, endy], [endx + 10, endy + 100]]);
+    Plays.addCellsAni(cells1, ['opacity', 200, 'easeInOut', 1, 0.5], listIndex);
+    Plays.addCellsAni(cells1, ['emphasis', 150, 'easeInOut', [255, 46, 46, 0], [255, 46, 46, 0.2]], listIndex);
+    Plays.tickList = Plays.playList[0]
     cells1.draw();
     window.cells1 = cells1;
+    window.addEventListener('ticklistend', () => {
+        console.log('AnimationTickingEnd');
+    });
+    console.log(Plays.tickList);
+    console.log(Plays.tickAnim());
 }

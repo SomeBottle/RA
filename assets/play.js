@@ -4,10 +4,11 @@ SomeBottle 20220305
 */
 'use strict';
 const Plays = {
+    tickEndEvent: new CustomEvent('ticklistend'),
     playList: [ // 演示列表
 
     ],
-    tickList: [ // 动画计算队列
+    tickList: [ // 动画计算队列(来自于playList中的某一项)
 
     ],
     init: function () { // 初始化样式
@@ -149,9 +150,9 @@ const Plays = {
             根据曲线生成帧数组，从init到end
             (曲线,帧数,起始数值,结束数值)
         */
-        let diff = end - init + 1, // 计算出首尾差值，这个相当于路程.
-            halfDiff = Math.floor(diff / 2), // 计算出首尾差值的一半(用于淡入淡出)
-            halfFrames = Math.floor(frames / 2),
+        let diff = end - init, // 计算出首尾差值，这个相当于路程.
+            halfDiff = diff / 2, // 计算出首尾差值的一半(用于淡入淡出)
+            halfFrames = Math.round(frames / 2),
             acceleration = (diff * 2) / (frames ** 2), // 加速度a=2s/t^2
             velo, // 初速度
             finalFrames = []; // 最终输出帧数组
@@ -166,28 +167,100 @@ const Plays = {
                 break;
             case 'easeInOut':
                 let leftFrames = frames - halfFrames,
-                    frames1 = this.framesMaker('easeIn', halfFrames, init, init + halfDiff - 1),
-                    frames2 = this.framesMaker('easeOut', leftFrames, init + halfDiff, end);
+                    leftDiff = diff - halfDiff,
+                    frames1 = this.framesMaker('easeIn', halfFrames, init, init + halfDiff),
+                    frames2 = this.framesMaker('easeOut', leftFrames, end - leftDiff, end);
                 return frames1.concat(frames2);
             default: // 线性匀速
                 acceleration = 0;
                 velo = diff / frames; // frames其实相当于时间
                 break;
         }
-        for (let i = 1; i < frames; i++) { // 时间从1开始，循环到frames-1
+        for (let i = 0; i < frames - 1; i++) { // 时间从0开始，循环到frames-1
             let currentVelo = velo + acceleration * i;
-            finalFrames.push(init);
             init = init + currentVelo;
+            finalFrames.push(
+                diff >= 0 ? Math.min(init, end) : Math.max(init, end)
+            );
         }
         finalFrames.push(end); // 最后一帧
         return finalFrames;
     },
-    addCellsAni: function (cellsGroup, animArr, step = false) {
-        // 添加单元格集动画(单元格组,动画属性,插入在哪一步(默认最后))
-        
+    addCellsAni: function (cellsObj, animArr, index = false) {
+        // 添加单元格集动画(单元格组对象,动画属性,插入在哪(默认最后))
+        /* animArr [动画类型(运动,透明度,强调),播放动画的帧数量,曲线,开始状态,结束状态]
+            其中开始状态和结束状态是数组，如果是运动，则为[x,y];如果是透明度，则是数值;如果是强调，则是[r,g,b,a]。
+        */
+        let [animType, frames, curve, init, end] = animArr,
+            animItem = [cellsObj, animType, []],
+            playList = this.playList;
+        switch (animType) {
+            case 'movement':
+                let [initX, initY] = init,
+                    [endX, endY] = end,
+                    xFrames = this.framesMaker(curve, frames, initX, endX),
+                    yFrames = this.framesMaker(curve, frames, initY, endY);
+                animItem[2] = zip(xFrames, yFrames);
+                break;
+            case 'opacity':
+                let initOpacity = init,
+                    endOpacity = end;
+                animItem[2] = this.framesMaker(curve, frames, initOpacity, endOpacity);
+                break;
+            case 'emphasis':
+                let [initR, initG, initB, initA] = init,
+                    [endR, endG, endB, endA] = end,
+                    rFrames = this.framesMaker(curve, frames, initR, endR),
+                    gFrames = this.framesMaker(curve, frames, initG, endG),
+                    bFrames = this.framesMaker(curve, frames, initB, endB),
+                    aFrames = this.framesMaker(curve, frames, initA, endA);
+                animItem[2] = zip(rFrames, gFrames, bFrames, aFrames);
+                break;
+        }
+        index = index === false ? playList.length : index;
+        if (!(playList[index] instanceof Array)) {
+            playList[index] = [];
+        }
+        playList[index].push(animItem); // 添加动画
+        return index; // 返回添加的位置
     },
     tickAnim: function () { // 计算一次动画
-        
+        let readyToBreak = false, // 是否结束tick
+            that = Plays,
+            list = that.tickList,
+            listLen = list.length
+        for (let i = 0; i < listLen; i++) {
+            let [cellsObj, animType, frames] = list[i],
+                currentFrame = frames.shift()
+            if (!currentFrame) {
+                readyToBreak = true; // 设一个标记
+                continue; // 跳出当前循环
+            } else {
+                readyToBreak = false; // 还有帧就不结束tick
+            }
+            switch (animType) {
+                case 'movement':
+                    let [x, y] = currentFrame;
+                    cellsObj.moveTo(x, y);
+                    break;
+                case 'opacity':
+                    let opacity = currentFrame;
+                    cellsObj.clear();
+                    cellsObj.draw(opacity);
+                    break;
+                case 'emphasis':
+                    let [r, g, b, a] = currentFrame;
+                    cellsObj.clearEmphases();
+                    cellsObj.emphasize(r, g, b, a);
+                    break;
+            }
+        }
+        if (readyToBreak || listLen <= 0) { // 如果所有动画都结束了就跳出
+            list.length = 0; // 清空当前的动画列表
+            window.dispatchEvent(that.tickEndEvent);
+        } else {
+            window.requestAnimationFrame(that.tickAnim); // 否则继续tick
+        }
     }
 };
 
@@ -203,15 +276,17 @@ const cellsGroup = function (cells) { // 将多个单元格组合成一个单元
     emphasesCanvas.height = canvasHt;
     [this.x, this.y] = [originX, originY];
     this.cells = cells;
-    this.draw = function () { // 绘制单元格组
+    this.draw = function (opacity = 1) { // 绘制单元格组(透明度)
         for (let i = 0, len = this.cells.length; i < len; i++) {
             let [x, y, wd, ht, text] = this.cells[i];
             ctx.save();
+            ctx.globalAlpha = opacity;
             ctx.fillStyle = '#101010';
             ctx.fillRect(x, y, wd, ht);
-            ctx.restore();
             ctx.strokeRect(x, y, wd, ht);
+            ctx.fillStyle = '#FFF';
             ctx.fillText(text, x + wd / 2, y + ht / 2);
+            ctx.restore();
         }
     }
     this.clear = function () {
@@ -240,6 +315,7 @@ const cellsGroup = function (cells) { // 将多个单元格组合成一个单元
         }
     }
 }
+
 /*
 // Testing code
 function gene(pos) {
@@ -251,7 +327,7 @@ function gene(pos) {
     ctx.fillRect(pos, 30, 20, 20);
 }
 let current = 0;
-let result = Plays.framesMaker('easeInOut', 200, 0, 500);
+let result = Plays.framesMaker('easeOut', 200, 0, 500);
 console.log(result);
 let animation = () => {
     gene(result[current]);
