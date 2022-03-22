@@ -1,5 +1,24 @@
 /* 关系代数解释器 */
 'use strict';
+/* 这里写一个小记记录一下这个破解释器的原理，以防以后忘记!( ・∀・)っ■
+    1. 入口
+        解释器的入口是函数understand(语句)
+        在传入语句之后，其通过逐字符遍历，将语句字符串按照括号划分不同深度，
+        并将括号内的内容推入tree数组相应的深度中，
+        最后所有括号中的内容都会被放在数组中，可以说这里一层层数组就是括号。
+            - 主要原理是：每次碰到左括号后，标记深度+1，记录接下来遍历的字符。在碰到右括号后，将刚才遍历的字符拼接成串，将字符串推入tree数组相应的分支中，标记深度-1。
+            - 推入相应深度专门用了一个函数diver(数组,深度)来实现，这个函数会创建并返回数组一定深度的分支数组
+                * 比如a=[]，depth=4，那么diver(a,depth)将会将a数组拓展为[[[[]]]]（如果相应数组存在元素就是取数组的最后一位），然后创建最内层的数组，也就是变成[[[[[]]]]]，并返回其引用，也就是a[0][0][0][0][0]
+    2. 树和分支的处理
+        在understand函数将语句解析成简单的树tree后，会将其传给branchParser函数。
+        这一部分主要靠branchParser和flattenTree两个函数互相不停调用实现（这大概不叫递归）
+        首先branchParser会先调用flattenTree函数（如字面意思，将树展平）。flattenTree函数会遍历当前分支(tree/branch)的表层，根据每一项的类型进行处理：
+            - 是文本，能找到对应操作符，记为操作符(operator)
+                * 注意这里还有一种情况就是关系名和操作符重名，虽然这里会被认为是操作符，但在后续分析中其仍会被筛出来。（当然我是非常不建议关系名这样写，自己都容易搞混）
+            - 是文本，能找到对应关系，记为关系(relation)
+            - 是数组 .... 这里明天再写
+
+*/
 const interpreter = {
     operators: { // 语法正则匹配
         'select': [/^SELECT\{([\s\S]+?)\}$/i, /^选择\{([\s\S]+?)\}$/, /^σ\{([\s\S]+?)\}$/], // 选择
@@ -116,7 +135,6 @@ const interpreter = {
                     oprtFunc = this.operatorFuncs[oprt]; // 操作符的函数
                 if (oprtType === 2 && prevItemUsable && (nextItemUsable || nextIsOprt)) {
                     // 二目运算（要求左右边要有项目）
-                    //console.log(oprt, result);
                     let prevValue = result.pop(); // 当前操作符的前一项刚好是result的最后一项
                     if (nextZero instanceof Object) { // 下一项是运算好的关系
                         result.push(oprtFunc(nextZero, logic, prevValue));
@@ -161,76 +179,64 @@ const interpreter = {
         // 操作符对应的函数，这些函数返回的全是计算好的关系
         select: function (after, expression, before) { // 选择(右边的关系,逻辑表达式,左边的关系)
             console.log(`(${counter})select executed:`, expression, after);
-            after['sprocess'] = `select${counter}`;
             counter++;
             return after;
         },
         project: function (after, expression, before) { // 投影(右边的关系,逻辑表达式,左边的关系)
             console.log(`(${counter})project executed:`, expression, after);
-            after['pprocess'] = `project${counter}`;
             counter++;
             return after;
         },
         union: function (after, expression, before) { // 并集(右边的关系,逻辑表达式,左边的关系)
-            console.log(`(${counter})union executed:`, expression, after);
-            after['uprocess'] = `union${counter}`;
+            console.log(`(${counter})union executed:`, expression, before, after);
             counter++;
-            return after;
+            return before;
         },
         except: function (after, expression, before) { // 差集(右边的关系,逻辑表达式,左边的关系)
-            console.log(`(${counter})except executed:`, expression, after);
-            after['eprocess'] = `except${counter}`;
+            console.log(`(${counter})except executed:`, expression, before, after);
             counter++;
-            return after;
+            return before;
         },
         intersect: function (after, expression, before) { // 交集(右边的关系,逻辑表达式,左边的关系)
-            console.log(`(${counter})intersect executed:`, expression, after);
-            after['iprocess'] = `intersect${counter}`;
+            console.log(`(${counter})intersect executed:`, expression, before, after);
             counter++;
-            return after;
+            return before;
         },
         crossjoin: function (after, expression, before) { // 笛卡尔乘积(右边的关系,逻辑表达式,左边的关系)
-            console.log(`(${counter})crossjoin executed:`, expression, after);
-            after['cprocess'] = `crossjoin${counter}`;
+            console.log(`(${counter})crossjoin executed:`, expression, before, after);
             counter++;
-            return after;
+            return before;
         },
         dividedby: function (after, expression, before) { // 除法(右边的关系,逻辑表达式,左边的关系)
-            console.log(`(${counter})dividedby executed:`, expression, after);
-            after['dprocess'] = `dividedby${counter}`;
+            console.log(`(${counter})dividedby executed:`, expression, before, after);
             counter++;
-            return after;
+            return before;
         },
         outerjoin: function (after, expression, before) { // 外连接(右边的关系,逻辑表达式,左边的关系)
-            console.log(`(${counter})outerjoin executed:`, expression, after);
-            after['oprocess'] = `outerjoin${counter}`;
+            console.log(`(${counter})outerjoin executed:`, expression, before, after);
             counter++;
-            return after;
+            return before;
         },
         leftjoin: function (after, expression, before) { // 左连接(右边的关系,逻辑表达式,左边的关系)
-            console.log(`(${counter})leftjoin executed:`, expression, after);
-            after['lprocess'] = `leftjoin${counter}`;
+            console.log(`(${counter})leftjoin executed:`, expression, before, after);
             counter++;
-            return after;
+            return before;
         },
         rightjoin: function (after, expression, before) { // 右连接(右边的关系,逻辑表达式,左边的关系)
-            console.log(`(${counter})rightjoin executed:`, expression, after);
-            after['rprocess'] = `rightjoin${counter}`;
+            console.log(`(${counter})rightjoin executed:`, expression, before, after);
             counter++;
-            return after;
+            return before;
         },
         thetajoin: function (after, expression, before) { // 对称连接(右边的关系,逻辑表达式,左边的关系)
-            console.log(`(${counter})thetajoin executed:`, expression, after);
-            after['tprocess'] = `thetajoin${counter}`;
+            console.log(`(${counter})thetajoin executed:`, expression, before, after);
             counter++;
-            return after;
+            return before;
         },
         naturaljoin: function (after, expression, before) { // 自然连接(右边的关系,逻辑表达式,左边的关系)
-            console.log(`(${counter})naturaljoin executed:`, expression, after);
-            after['nprocess'] = `naturaljoin${counter}`;
+            console.log(`(${counter})naturaljoin executed:`, expression, before, after);
             counter++;
-            return after;
+            return before;
         }
     }
 };
-let counter = 0;
+let counter = 10;

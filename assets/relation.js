@@ -38,6 +38,7 @@ const Relations = function () { // 关系表处理构造函数(关系名)
                 }
             }
             relationBase[name] = { // 存入(或覆盖)关系表
+                'name': name,
                 'attrs': attrs,
                 'tuples': tuples
             };
@@ -90,7 +91,7 @@ const Relations = function () { // 关系表处理构造函数(关系名)
     }
     this.del = function () { // 删除关系表
         delete relationBase[this.name];
-        console.log(relationBase,this.name);
+        console.log(relationBase, this.name);
         this.save(); // 存入本地存储
     }
 };
