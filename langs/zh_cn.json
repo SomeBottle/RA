@@ -28,7 +28,9 @@
     },
     "interpreter": {
         "syntaxError.parenthesisLeft": "语法错误：括号未闭合",
-        "referenceError.notDefined": "未定义的变量"
+        "referenceError.notDefined": "未定义的关系",
+        "operatorError.noRelation": "缺少关系，操作符错误",
+        "operatorError.calculate": "计算错误"
     },
     "notice": {
         "relation.nameRequired": "关系名不能为空",

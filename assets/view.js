@@ -2,7 +2,7 @@
 /*视图部分*/
 'use strict';
 
-const relaObj = new Relations();
+const relaObj = new Relations(); // 构造一个relation对象常量
 
 const basicView = { // 基础视图
     langList: {},
@@ -260,27 +260,30 @@ const relationView = { // 关系表相关的视图
         }).then(res => {
             let thumbFoots = s('.singleThumb > .foot', true);
             for (let foot of thumbFoots) { // 关系表缩略底部按钮
-                let parentThumb = foot.parentNode,
-                    name = parentThumb.getAttribute('data-name'), // 获得关系名
-                    csvBtn = foot.querySelector('.csvBtn'), // 获得csv按钮
-                    delBtn = foot.querySelector('.delBtn'), // 获得删除按钮
-                    relationObj = relaObj.x(name),
-                    editCSV = () => {
-                        bv.close();
-                        nameInput.value = name; // 填充关系名
-                        bv.nameInputChecker(); // 触发编辑
-                        csvBtn.removeEventListener('click', editCSV, false);
-                    },
-                    delRela = () => {
-                        if (confirm(bv.getLang('relationView > relation.delConfirm'))) {
+                ((foot) => {
+                    let parentThumb = foot.parentNode,
+                        name = parentThumb.getAttribute('data-name'), // 获得关系名
+                        csvBtn = foot.querySelector('.csvBtn'), // 获得csv按钮
+                        delBtn = foot.querySelector('.delBtn'), // 获得删除按钮
+                        editCSV = () => {
+                            bv.close();
+                            nameInput.value = name; // 填充关系名
+                            bv.nameInputChecker(); // 触发编辑
                             delBtn.removeEventListener('click', delRela, false);
-                            relationObj.del(); // 删除关系表
-                            parentThumb.remove(); // 重新渲染
+                            csvBtn.removeEventListener('click', editCSV, false);
+                        },
+                        delRela = () => {
+                            if (confirm(bv.getLang('relationView > relation.delConfirm'))) {
+                                delBtn.removeEventListener('click', delRela, false);
+                                csvBtn.removeEventListener('click', editCSV, false);
+                                relaObj.x(name).del(); // 删除关系表
+                                parentThumb.remove(); // 重新渲染
+                            }
                         }
-                    }
-                csvBtn.addEventListener('click', editCSV, false); // 绑定csv按钮点击事件
-                delBtn.addEventListener('click', delRela, false); // 绑定删除按钮点击事件
-                parentThumb.querySelector('#modifyBtn').onclick = rv.modify; // 绑定关系缩略图点击事件
+                    csvBtn.addEventListener('click', editCSV, false); // 绑定csv按钮点击事件
+                    delBtn.addEventListener('click', delRela, false); // 绑定删除按钮点击事件
+                    parentThumb.querySelector('#modifyBtn').onclick = rv.modify; // 绑定关系缩略图点击事件
+                })(foot); // 采用闭包以防止可能的问题
             }
         });
     },
@@ -506,6 +509,7 @@ UNION
 (EXCEPT)`;
 }, 500);
 
+/*
 playView.show();
 
 window.onload = () => {
@@ -523,7 +527,7 @@ window.onload = () => {
     let cells1 = new cellsGroup(cells2mask),
         [endx, endy] = cells2mask[0];
     //console.log(endx, endy);
-    let listIndex = Plays.addCellsAni(cells1, ['movement', 100, 'easeInOut', [endx, endy], [endx + 10, endy + 100]]);
+    let listIndex = Plays.addCellsAni(cells1, ['movement', 100, 'easeInOut', [endx, endy], [endx + 20, endy + 200]]);
     Plays.addCellsAni(cells1, ['opacity', 200, 'easeInOut', 1, 0.5], listIndex);
     Plays.addCellsAni(cells1, ['emphasis', 150, 'easeInOut', [255, 46, 46, 0], [255, 46, 46, 0.2]], listIndex);
     Plays.tickList = Plays.playList[0]
@@ -532,6 +536,6 @@ window.onload = () => {
     window.addEventListener('ticklistend', () => {
         console.log('AnimationTickingEnd');
     });
-    console.log(Plays.tickList);
-    console.log(Plays.tickAnim());
+    Plays.tickAnim();
 }
+*/

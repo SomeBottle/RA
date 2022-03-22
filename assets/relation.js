@@ -12,6 +12,7 @@ const Relations = function () { // 关系表处理构造函数(关系名)
         return relationBase[name] ? true : false;
     }
     this.save = function () { // 存入本地存储
+        console.log('saved');
         localStorage['RARelationBase'] = JSON.stringify(relationBase);
     }
     this.write = function (tableObj) { // 创建或者写入关系表(关系表对象)
@@ -89,6 +90,7 @@ const Relations = function () { // 关系表处理构造函数(关系名)
     }
     this.del = function () { // 删除关系表
         delete relationBase[this.name];
+        console.log(relationBase,this.name);
         this.save(); // 存入本地存储
     }
 };
