@@ -1,6 +1,9 @@
 /* 关系代数解释器 */
 'use strict';
 /* 这里写一个小记记录一下这个破解释器的原理，以防以后忘记!( ・∀・)っ■
+    0. 注意事项：使用和运算符同名的关系时一定要用括号括起来！
+        【例】A UNION EXCEPT ×
+             A UNION (EXCEPT) √
     1. 入口
         解释器的入口是函数understand(语句)
         在传入语句之后，其通过逐字符遍历，将语句字符串按照括号划分不同深度，
@@ -39,15 +42,40 @@
             (2) 如果当前项目(i)是运算符(operator)：
                 - 是双目运算：
                     * 先取出当前项在分支中的前一项(i-1)和后一项(i+1)
-                        $ 针对前一项：判断是不是关系(child和relation类)
-                        $ 针对后一项：判断是不是关系或者一目运算符（因为存在二目运算后接一目运算符的情况）
+                        $ 针对前一项(i-1)：判断是不是关系(child和relation类)
+                        $ 针对后一项(i+1)：判断是不是关系或者一目运算符（因为存在二目运算后接一目运算符的情况）
                         【例】 A EXCEPT SELECT{...}(RELATION)
-                        $ Q：为什么不判断前一项是不是一目运算符呢？
+                        $ 为什么不判断前一项是不是一目运算符呢？
                             # 其一，因为树形化的时候是按括号划分的，前一项就算是一目运算符，也会以括号结尾，判断结果就是relation类型
                             【例】 SELECT{...}(RELATION) EXCEPT A
                             # 其二，因为一个分支中运算顺序是自左向右的，前一项已经运算好了，是现成的关系。
-                    * 接着取出结果数组result的最后一项，这里相当于当前运算符的左结合值（因为遍历语句的顺序是从左往右的，运算结果也是按这个顺序push到result数组中，运算符左边按理来说应该是已经算好的关系，作为result数组中的最后一项而存在）
+                    * 如果前一项(i-1)符合上述要求，接着取出结果数组result的最后一项，这里相当于当前运算符的左结合值（因为遍历语句的顺序是从左往右的，运算结果也是按这个顺序push到result数组中，运算符左边按理来说应该是已经算好的关系，作为result数组中的最后一项而存在）
+                    * 接着检查后一项(i+1)
+                        $ 如果这一项是关系，直接传入对应的运算函数：
+                          oprtFunc(后一项(i+1),逻辑表达式,前一项(result最后一个元素))
+                          将函数返回的结果推入结果数组result
+                          最后将i+1以跳过后一项（因为这一项已经参与运算了）
+                          【例】 SELECT{...}(RELATION) EXCEPT A
+                                树形化后：['SELECT{...}',[RELATION],]
+                                其中A就算“后一项”，是一个关系
+                        $ 如果这一项是一目运算，则先把这个一目运算完成，再把结果作为“后一项”传入运算函数(oprtFunc)，运算结果推入数组result
+                          在这之后要进行i+2操作，因为从当前项到后面两项都已经参与了运算。
+                          【例】 A UNION SELECT{...}(RELATION)
+                             树化：['A','UNION','SELECT{...}',[RELATION]]
+                             当前项是UNION的话，后面SELECT{...}和[RELATION]都会参与运算，所以在运算完后进行i+2操作
+                - 是单目运算：
+                    * 只需要取出当前项在分支中的后一项(i+1)，判断是不是关系（child,relation类）
+                    * 如果后一项符合上述条件，随逻辑表达式一同传入运算函数(oprtFunc)，运算结果推入数组result。
+                    * 接下来和之前的一样，进行i+1操作。
+                - 双目运算不是，单目运算也不是的话，
+                  判断这个项目(i)是不是和运算符同名的关系，如果是的话，将该关系推入数组result。
+                    【例】A EXCEPT (EXCEPT)
+                       树化后：['A','EXCEPT',['EXCEPT']]
+                       最开始会认为第二个except是运算符，但很快程序就发现EXCEPT左边和右边都没有关系，找了一下发现有关系名也叫EXCEPT，所以将关系推入第二层（因为是在括号内）的数组result。
 
+        通过这几步分析，整个语句从括号内层到外层，从左至右逐一执行。
+        到最后，最外层branchParser返回的result数组只会剩下一个元素，也就是结果关系，运算结束。
+        - SomeBottle 2022.3.24
 */
 const interpreter = {
     operators: { // 语法正则匹配
@@ -100,7 +128,7 @@ const interpreter = {
             bv = basicView,
             bufferer = (chr) => { // 将字符连成字符串
                 // 没有遇到空字符或者括号就算同一节字符串
-                if (!(/\s/).test(chr) && !['(', ')'].includes(chr)) {
+                if (chr && !(/\s/).test(chr) && !['(', ')'].includes(chr)) {
                     strBuffer = strBuffer + chr;
                 } else if (strBuffer) { // 一小段字符串连接完成
                     let branch = this.diver(tree, depth);
@@ -117,7 +145,9 @@ const interpreter = {
                 depth--;
             }
         }
+        bufferer(false); // 清空缓冲区
         if (depth !== 0) throw bv.getLang('interpreter > syntaxError.parenthesisLeft'); // 括号未闭合错误
+        console.log(tree);
         console.log(this.branchParser(tree)); // 解析树语句
     },
     flattenTree: function (tree) { // 分析语句，最后输出结果只剩一层
@@ -185,6 +215,7 @@ const interpreter = {
                 } else if (probableRela) { // 关系名和操作符重名的情况
                     result.push(probableRela);
                 } else {
+                    console.log(flatted);
                     throw `${bv.getLang('interpreter > operatorError.noRelation')}: ${oprt}`; // 操作符错误
                 }
             } else { // child和relation返回的都是关系，一致处理

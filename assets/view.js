@@ -506,7 +506,7 @@ PROJECT{columnA}(
     (TEST)
 )
 UNION
-(EXCEPT)`;
+EXCEPT`;
 }, 500);
 
 /*
