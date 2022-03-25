@@ -499,14 +499,14 @@ setTimeout(() => {
     s('.algebraInput').value = `PROJECT{columnA}(EXCEPT)
 EXCEPT
 PROJECT{columnA}(
-    (SELECT{NAME='233'}(STUDENT)) 
+    (SELECT{NAME='高二'}(STUDENT)) 
     JOIN
     (SC)
     JOIN
     (TEST)
 )
 UNION
-EXCEPT`;
+( EXCEPT )`;
 }, 500);
 
 /*

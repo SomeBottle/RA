@@ -205,6 +205,8 @@ const interpreter = {
                             let oprtRes = this.operatorFuncs[nextZero](nextNextValue[0], nextLogic); // 先把下一项的结果计算出来
                             result.push(oprtFunc(oprtRes, logic, prevValue)); // 再把结果带入二目运算
                             i = i + 1; // 再跳过一项
+                        } else {
+                            throw `${bv.getLang('interpreter > operatorError.noRelation')}: ${nextZero}`; // 操作符错误
                         }
                     }
                     i = i + 1; // 下一项已经参与了计算，遂跳过
@@ -215,7 +217,6 @@ const interpreter = {
                 } else if (probableRela) { // 关系名和操作符重名的情况
                     result.push(probableRela);
                 } else {
-                    console.log(flatted);
                     throw `${bv.getLang('interpreter > operatorError.noRelation')}: ${oprt}`; // 操作符错误
                 }
             } else { // child和relation返回的都是关系，一致处理
@@ -236,12 +237,59 @@ const interpreter = {
         }
         return ''; // 匹配不到说明是关系或者非法语句，先暂留空字符串
     },
+    distinctSet: function (arr) { // 集合去重
+        for (let i = 0, len = arr.length; i < len; i++) {
+            let compare = arr[i];
+            for (let j = 0, len2 = arr.length; j < len2; j++) {
+                if (i == j) continue;
+                let equal = arr[j].every((val, ind) => {
+                    return val === compare[ind];
+                })
+                if (equal) {
+                    arr.splice(j, 1);
+                    i--;
+                    j--;
+                    len--;
+                    len2--;
+                }
+            }
+        }
+        return arr;
+    },
     operatorFuncs: {
         // 操作符对应的函数，这些函数返回的全是计算好的关系
         select: function (after, expression, before) { // 选择(右边的关系,逻辑表达式,左边的关系)
-            console.log(`(${counter})select executed:`, expression, after);
+            let comma = expression.split(','), // 逻辑表达式逗号分割
+                selected = Object.assign({}, after), // 浅拷贝
+                bv = basicView;
+            for (let i = 0, len = comma.length; i < len; i++) {
+                let item = comma[i].trim(),
+                    // ATTR = 'VALUE'
+                    matchingStr = item.match(/^(\w+?)\s*?=\s*?'([\s\S]+?)'$/),
+                    // ATTR = NUM
+                    matchingNum = item.match(/^(\w+?)\s*?=\s*?([0-9.]+?)$/),
+                    matching = matchingStr || matchingNum;
+                if (matching) {
+                    let [, attr, value] = matching, // 属性名和值
+                        attrIndex = selected['attrs'].indexOf(attr),
+                        tuples = selected['tuples'],
+                        result = [];
+                    if (attrIndex === -1) throw `${bv.getLang('interpreter > operatorError.noSuchAttr')}: ${attr}`; // 没有这个属性
+                    for (let j = 0, len = tuples.length; j < len; j++) { // 选择出元组
+                        let tuple = tuples[j];
+                        console.log(value, attrIndex, tuple[attrIndex]);
+                        if (tuple[attrIndex] === value) {
+                            result.push(tuple);
+                        }
+                    }
+                    selected['tuples'] = interpreter.distinctSet(result); // 更新为选择的元组(去重后)
+                } else {
+                    throw `${bv.getLang('interpreter > operatorError.wrongLogic')}: ${item}`;
+                }
+            }
+            console.log(`(${counter})select executed:`, selected);
             counter++;
-            return after;
+            return selected;
         },
         project: function (after, expression, before) { // 投影(右边的关系,逻辑表达式,左边的关系)
             console.log(`(${counter})project executed:`, expression, after);
