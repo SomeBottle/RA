@@ -172,7 +172,7 @@ const interpreter = {
         for (let i = 0; i < treeLen; i++) {
             let item = tree[i];
             if (item instanceof Array) { // 如果是数组，就相当于括号，则递归
-                let { pos } = this.dig(item, true); // 取得子语句的一个大概位置
+                let { pos } = this.dig(item, true); // 尝试挖出子语句的开头位置
                 result.push(['child', this.branchParser(item), item, pos]); // child的值就是关系
             } else {
                 let { command, pos } = item,
@@ -225,6 +225,7 @@ const interpreter = {
             let [type, value, origin, originPos] = flatted[i];
             if (type === 'operator') {
                 let [oprt, logic] = value, // [操作符,逻辑表达式]
+                    [, , , prevPrevPos] = flatted[i - 2] || [],
                     [prevType, prevValue, , prevPos] = flatted[i - 1] || [], // 前一项，二元运算需要用到
                     prevItemUsable = ['child', 'relation'].includes(prevType), // 前一项是否可用(二目运算要用)
                     [nextType, nextValue, , nextPos] = flatted[i + 1] || [[], []], // 获得下一项，这一项无论一元还是二元，都是需要的
@@ -233,6 +234,8 @@ const interpreter = {
                     oprtFunc = this.operatorFuncs[oprt], // 操作符的函数
                     oprtType = this.oprtTypes[oprt], // 操作符是一目还是二目
                     nextZero, nextLogic, nextIsOprt;
+                // 优先找有没有前前项，如果有前一项就是child，取prevPrevPos。如果没有就是relation，取prevPos
+                prevPos = prevPrevPos || (prevPos || 0);
                 if (nextValue instanceof Array) { // 下一项如果是Array，就是child，如果是Object，则为relation
                     [nextZero, nextLogic] = nextValue || []; // 下一项数组的0位，可能是操作符，也可能是运算好的关系（考虑到下一项可能是一目运算）
                     nextIsOprt = this.oprtTypes[nextZero] === 1; // （考虑到下一项可能是一目运算）
@@ -267,7 +270,7 @@ const interpreter = {
                     throw `[Pos:${originPos}] ${bv.getLang('interpreter > operatorError.lackRelation')}: ${oprt}`; // 操作符错误
                 }
             } else { // child和relation返回的都是关系，一致处理
-                // 多层括号的问题主要就出现在这里，详细看digger的注释
+                // 多层括号的问题主要就出现在这里，详细看dig函数的注释
                 result.push(this.dig(value)); // 关系直接推入结果列表
             }
         }

@@ -29,7 +29,7 @@
     "interpreter": {
         "syntaxError.parenthesisLeft": "语法错误：括号未闭合",
         "referenceError.notDefined": "未定义的关系",
-        "operatorError.lackRelation": "操作符运算缺少关系",
+        "operatorError.lackRelation": "运算操作缺少关系",
         "operatorError.wrongLogic": "逻辑表达式错误",
         "operatorError.noSuchAttr": "关系中没有这个属性",
         "unionError.attrsNotEqual": "用于并集的关系属性不一致"
