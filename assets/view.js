@@ -358,7 +358,8 @@ const relationView = { // 关系表相关的视图
             <a href="javascript:void(0);" act="del">×</a>
         </td></tr>`;
         }
-        template = template.replaceTp('relationSpan', relaSpan)
+        template = template.replaceTp('relationName', name)
+            .replaceTp('relationSpan', relaSpan)
             .replaceTp('attrsRow', attrsTd) // 替换模板中的关系名和属性列
             .replaceTp('tuplesBody', tuplesBody); // 替换模板中的关系表内容
         printAt.innerHTML = bv.langRender('relationView', template); // 打印到页面
@@ -506,7 +507,7 @@ PROJECT{NAME}(
     (TEST)
 )
 UNION
-( EXCEPT )`;
+STUDENT`;
 }, 500);
 
 /*
