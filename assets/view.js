@@ -496,10 +496,10 @@ const playView = { // 演示视图
 // Testing code below! 下方为测试代码
 
 setTimeout(() => {
-    s('.algebraInput').value = `PROJECT{columnA}(EXCEPT)
+    s('.algebraInput').value = `PROJECT{NAME}(EXCEPT)
 EXCEPT
-PROJECT{columnA}(
-    (SELECT{NAME='高二'}(STUDENT)) 
+PROJECT{NAME}(
+    (SELECT{NAME='高二'}((STUDENT))) 
     JOIN
     (SC)
     JOIN

@@ -174,6 +174,28 @@ const interpreter = {
         }
         return result;
     },
+    dig: function (childArr) {
+        /* 这个函数专门用于处理branchParser中child的部分，因为child作为子语句，运算出来的结果可能是透过好多层括号的：
+            例如：
+            A UNION (B) -树形化-> ['A','UNION',['B']]
+                        -准备UNION-> 
+                            UNION左结合：A关系对象
+                            UNION右结合：[B关系对象]
+            A UNION ((B)) -树形化-> ['A','UNION',[['B']]]
+                          -准备UNION->
+                            UNION左结合：A关系对象
+                            UNION右结合：[[B关系对象]]
+            很明显能发现套的括号越多最终用于结合的数组层次越多，所以这里需要“挖”到最深处取到B关系对象
+          本函数的作用：将最里层的结果提取出来
+            例如：[[[{name: 'STUDENT', attrs: Array(3), tuples: Array(5)}]]]，处理成{name: 'STUDENT', attrs: Array(3), tuples: Array(5)}
+            SomeBottle20220326
+        */
+        let pointer = childArr;
+        while ((pointer instanceof Array) && pointer.length === 1) {
+            pointer = pointer[0];
+        }
+        return pointer;
+    },
     branchParser: function (branch) { // 分析树分支
         let flatted = this.flattenTree(branch), // 展平树（将括号内的子语句运算完成）
             branchLen = flatted.length,
@@ -196,13 +218,15 @@ const interpreter = {
                 if (oprtType === 2 && prevItemUsable && (nextItemUsable || nextIsOprt)) {
                     // 二目运算（要求左右边要有项目）
                     let prevValue = result.pop(); // 当前操作符的前一项刚好是result的最后一项
+                    console.log(flatted);
                     if (nextZero instanceof Object) { // 下一项是运算好的关系
                         result.push(oprtFunc(nextZero, logic, prevValue));
                     } else { // 下一项是一目操作符！
                         let [nextNextType, nextNextValue] = flatted[i + 2] || [], // 操作符就牵扯到下下一项
+                            [nextNextZero] = nextNextValue,
                             nextNextItemUsable = ['child', 'relation'].includes(nextNextType); // 下下一项是否作为关系可用
                         if (nextNextItemUsable) {
-                            let oprtRes = this.operatorFuncs[nextZero](nextNextValue[0], nextLogic); // 先把下一项的结果计算出来
+                            let oprtRes = this.operatorFuncs[nextZero](nextNextZero, nextLogic); // 先把下一项的结果计算出来(未运算的child类型还有一层数组)
                             result.push(oprtFunc(oprtRes, logic, prevValue)); // 再把结果带入二目运算
                             i = i + 1; // 再跳过一项
                         } else {
@@ -220,7 +244,8 @@ const interpreter = {
                     throw `${bv.getLang('interpreter > operatorError.noRelation')}: ${oprt}`; // 操作符错误
                 }
             } else { // child和relation返回的都是关系，一致处理
-                result.push(value); // 关系直接推入结果列表
+                // 多层括号的问题主要就出现在这里，详细看digger的注释
+                result.push(this.dig(value)); // 关系直接推入结果列表
             }
         }
         return result; // 最后返回的应该是一个运算出的关系结果
@@ -265,9 +290,9 @@ const interpreter = {
             for (let i = 0, len = comma.length; i < len; i++) {
                 let item = comma[i].trim(),
                     // ATTR = 'VALUE'
-                    matchingStr = item.match(/^(\w+?)\s*?=\s*?'([\s\S]+?)'$/),
+                    matchingStr = item.match(/^(\S+?)\s*?=\s*?'([\s\S]+?)'$/),
                     // ATTR = NUM
-                    matchingNum = item.match(/^(\w+?)\s*?=\s*?([0-9.]+?)$/),
+                    matchingNum = item.match(/^(\S+?)\s*?=\s*?([0-9.]+?)$/),
                     matching = matchingStr || matchingNum;
                 if (matching) {
                     let [, attr, value] = matching, // 属性名和值
@@ -277,7 +302,6 @@ const interpreter = {
                     if (attrIndex === -1) throw `${bv.getLang('interpreter > operatorError.noSuchAttr')}: ${attr}`; // 没有这个属性
                     for (let j = 0, len = tuples.length; j < len; j++) { // 选择出元组
                         let tuple = tuples[j];
-                        console.log(value, attrIndex, tuple[attrIndex]);
                         if (tuple[attrIndex] === value) {
                             result.push(tuple);
                         }
@@ -292,9 +316,30 @@ const interpreter = {
             return selected;
         },
         project: function (after, expression, before) { // 投影(右边的关系,逻辑表达式,左边的关系)
-            console.log(`(${counter})project executed:`, expression, after);
+            let comma = expression.split(','), // 逻辑表达式逗号分割
+                relation = Object.assign({}, after), // 浅拷贝
+                attrs = relation['attrs'],
+                tuples = relation['tuples'],
+                colLen = tuples.length, // 一列几个元组的分量
+                projectedAttrs = [],
+                projectedTuples = new Array(colLen).fill([]), // 构造新的集合
+                bv = basicView;
+
+            console.log(relation);
+            for (let i = 0, len = comma.length; i < len; i++) {
+                let item = comma[i].trim(),
+                    attrIndex = relation['attrs'].indexOf(item);
+                if (attrIndex === -1) throw `${bv.getLang('interpreter > operatorError.noSuchAttr')}: ${item}`;
+                projectedAttrs.push(attrs[attrIndex]);
+                for (let j = 0; j < colLen; j++) {
+                    projectedTuples[j].push(tuples[j][attrIndex]);
+                }
+            }
+            relation['attrs'] = projectedAttrs;
+            relation['tuples'] = projectedTuples;
+            console.log(`(${counter})project executed:`, relation);
             counter++;
-            return after;
+            return relation;
         },
         union: function (after, expression, before) { // 并集(右边的关系,逻辑表达式,左边的关系)
             console.log(`(${counter})union executed:`, expression, before, after);
