@@ -218,7 +218,6 @@ const interpreter = {
                 if (oprtType === 2 && prevItemUsable && (nextItemUsable || nextIsOprt)) {
                     // 二目运算（要求左右边要有项目）
                     let prevValue = result.pop(); // 当前操作符的前一项刚好是result的最后一项
-                    console.log(flatted);
                     if (nextZero instanceof Object) { // 下一项是运算好的关系
                         result.push(oprtFunc(nextZero, logic, prevValue));
                     } else { // 下一项是一目操作符！
@@ -226,7 +225,7 @@ const interpreter = {
                             [nextNextZero] = nextNextValue,
                             nextNextItemUsable = ['child', 'relation'].includes(nextNextType); // 下下一项是否作为关系可用
                         if (nextNextItemUsable) {
-                            let oprtRes = this.operatorFuncs[nextZero](nextNextZero, nextLogic); // 先把下一项的结果计算出来(未运算的child类型还有一层数组)
+                            let oprtRes = this.operatorFuncs[nextZero](nextNextZero, nextLogic); // 先把下一项的结果计算出来
                             result.push(oprtFunc(oprtRes, logic, prevValue)); // 再把结果带入二目运算
                             i = i + 1; // 再跳过一项
                         } else {
@@ -322,10 +321,8 @@ const interpreter = {
                 tuples = relation['tuples'],
                 colLen = tuples.length, // 一列几个元组的分量
                 projectedAttrs = [],
-                projectedTuples = new Array(colLen).fill([]), // 构造新的集合
+                projectedTuples = new Array(colLen).fill().map(v => new Array()), // 构造新的集合
                 bv = basicView;
-
-            console.log(relation);
             for (let i = 0, len = comma.length; i < len; i++) {
                 let item = comma[i].trim(),
                     attrIndex = relation['attrs'].indexOf(item);
