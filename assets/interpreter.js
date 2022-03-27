@@ -82,6 +82,12 @@
 
         通过这几步分析，整个语句从括号内层到外层，从左至右逐一执行。
         到最后，最外层branchParser返回的result数组只会剩下一个元素，也就是结果关系，运算结束。
+
+    【额外记录】关于去重的地方
+        关系本质上还是集合，集合最令人印象深刻的地方就是没有重复项了，在运算过程中有这几个地方需要对元组进行去重处理：
+            1. 刚刚从库(Relations)中取出关系的时候（因为在用户添加关系的时候我并没有添加元组重复检查）
+            2. 某些oprtFunc(运算函数)运算完成时（如PROJECT,UNION运算完毕后就可能出现重复项，需要去重）
+            (传入oprtFunc的关系已经全部去过重了)
         - SomeBottle 2022.3.24
 */
 const interpreter = {
@@ -180,6 +186,7 @@ const interpreter = {
                 if (!oprt) {
                     let relation = relaObj.x(command).base;
                     if (relation) { // 如果是关系
+                        relation = this.distinctTuple(relation);
                         result.push(['relation', relation, command, pos]);
                     } else {
                         throw `[Pos: ${pos}] ${bv.getLang('interpreter > referenceError.notDefined')}: ${command}`; // 找不到关系的错误
@@ -244,16 +251,17 @@ const interpreter = {
                 }
                 if (oprtType === 2 && prevItemUsable && (nextItemUsable || nextIsOprt)) {
                     // 二目运算（要求左右边要有项目）
-                    let prevValue = result.pop(); // 当前操作符的前一项刚好是result的最后一项
+                    let leftRela = result.pop(); // 当前操作符的左结合项刚好是result的最后一项
                     if (nextZero instanceof Object) { // 下一项是运算好的关系
-                        result.push(oprtFunc([nextZero, prevValue], logic, [nextPos, originPos, prevPos])); // 将下一项关系和前一项运算结果放入result
+                        let rightRela = nextZero;
+                        result.push(oprtFunc([rightRela, leftRela], logic, [nextPos, originPos, prevPos])); // 将下一项关系和前一项运算结果放入result
                     } else { // 下一项是一目操作符！
                         let [nextNextType, nextNextValue, , nextNextPos] = flatted[i + 2] || [], // 操作符就牵扯到下下一项
-                            [nextNextZero] = nextNextValue,
+                            [nextRightRela] = nextNextValue,
                             nextNextItemUsable = ['child', 'relation'].includes(nextNextType); // 下下一项是否作为关系可用
                         if (nextNextItemUsable) {
-                            let oprtRes = this.operatorFuncs[nextZero]([nextNextZero], nextLogic, [nextNextPos, nextPos]); // 先把下一项的一目运算结果计算出来
-                            result.push(oprtFunc([oprtRes, prevValue], logic, [nextPos, originPos, prevPos])); // 再把结果带入二目运算
+                            let rightRela = this.operatorFuncs[nextZero]([nextRightRela], nextLogic, [nextNextPos, nextPos]); // 先把下一项的一目运算结果计算出来
+                            result.push(oprtFunc([rightRela, leftRela], logic, [nextPos, originPos, prevPos])); // 再把结果带入二目运算
                             i = i + 1; // 再跳过一项
                         } else {
                             throw `[Pos:${nextNextPos}] ${bv.getLang('interpreter > operatorError.lackRelation')}: ${nextZero}`; // 操作符错误
@@ -261,11 +269,12 @@ const interpreter = {
                     }
                     i = i + 1; // 下一项已经参与了计算，遂跳过
                 } else if (oprtType === 1 && nextItemUsable) {
-                    // 一目运算（要求右边有项目）
-                    result.push(oprtFunc([nextZero], logic, [nextPos, originPos]));
+                    // 一目运算（要求右边有关系）
+                    let rightRela = nextZero;
+                    result.push(oprtFunc([rightRela], logic, [nextPos, originPos]));
                     i = i + 1; // 下一项已经参与了计算，遂跳过
                 } else if (probableRela) { // 关系名和操作符重名的情况
-                    result.push(probableRela);
+                    result.push(this.distinctTuple(probableRela));
                 } else {
                     throw `[Pos:${originPos}] ${bv.getLang('interpreter > operatorError.lackRelation')}: ${oprt}`; // 操作符错误
                 }
@@ -288,7 +297,12 @@ const interpreter = {
         }
         return ''; // 匹配不到说明是关系或者非法语句，先暂留空字符串
     },
-    distinctSet: function (arr) { // 集合去重
+    distinctTuple: function (relation) {
+        relation = Object.assign({}, relation); // 浅拷贝
+        relation['tuples'] = this.distinctArr(relation['tuples']);
+        return relation;
+    },
+    distinctArr: function (arr) { // 数组去重
         arr = Array.from(arr); // 浅拷贝
         for (let i = 0, len = arr.length; i < len; i++) {
             let compare = arr[i];
@@ -332,7 +346,7 @@ const interpreter = {
             let [after, before] = relas,
                 [afterPos, selfPos, beforePos] = positions,
                 comma = expression.split(','), // 逻辑表达式逗号分割
-                selected = Object.assign({}, after), // 浅拷贝
+                selected = after,
                 bv = basicView;
             for (let i = 0, len = comma.length; i < len; i++) {
                 let item = comma[i].trim(),
@@ -353,7 +367,7 @@ const interpreter = {
                             result.push(tuple);
                         }
                     }
-                    selected['tuples'] = interpreter.distinctSet(result); // 更新为选择的元组(去重后)
+                    selected['tuples'] = result; // 更新为选择的元组(去重后)
                 } else {
                     throw `[Pos:${selfPos}] ${bv.getLang('interpreter > operatorError.wrongLogic')}: ${item}`;
                 }
@@ -366,7 +380,7 @@ const interpreter = {
             let [after, before] = relas,
                 [afterPos, selfPos, beforePos] = positions,
                 comma = expression.split(','), // 逻辑表达式逗号分割
-                relation = Object.assign({}, after), // 浅拷贝
+                relation = after,
                 attrs = relation['attrs'],
                 tuples = relation['tuples'],
                 colLen = tuples.length, // 一列几个元组的分量
@@ -383,8 +397,8 @@ const interpreter = {
                 }
             }
             relation['attrs'] = projectedAttrs;
-            // 别忘了去重操作
-            relation['tuples'] = interpreter.distinctSet(projectedTuples);
+            // PROJECT运算后可能有重复元组，别忘了去重操作
+            relation['tuples'] = interpreter.distinctArr(projectedTuples);
             console.log(`(${counter})project executed:`, relation);
             counter++;
             return relation;
@@ -401,7 +415,8 @@ const interpreter = {
                 throw `[Pos:${beforePos},${afterPos}] ${bv.getLang('interpreter > unionError.attrsNotEqual')}`;
             }
             let unionedTuples = beforeTuples.concat(afterTuples);
-            unionedTuples = interpreter.distinctSet(unionedTuples); // 去重
+            // UNION运算后可能有重复元组
+            unionedTuples = interpreter.distinctArr(unionedTuples);
             console.log(`(${counter})union executed:`, expression, before, after);
             counter++;
             return {
@@ -420,8 +435,6 @@ const interpreter = {
             if (!interpreter.arrEquals(beforeAttrs, afterAttrs)) { // 先看看属性列是不是一致的
                 throw `[Pos:${beforePos},${afterPos}] ${bv.getLang('interpreter > exceptError.attrsNotEqual')}`;
             }
-            beforeTuples = interpreter.distinctSet(beforeTuples); // 去重
-            afterTuples = interpreter.distinctSet(afterTuples); // 去重
             let compared = []; // 把比对过的index存入，防止重复比对消耗资源
             for (let i = 0, len = beforeTuples.length; i < len; i++) {
                 let tuple = beforeTuples[i];
@@ -454,8 +467,6 @@ const interpreter = {
             if (!interpreter.arrEquals(beforeAttrs, afterAttrs)) { // 先看看属性列是不是一致的
                 throw `[Pos:${beforePos},${afterPos}] ${bv.getLang('interpreter > exceptError.attrsNotEqual')}`;
             }
-            beforeTuples = interpreter.distinctSet(beforeTuples); // 去重
-            afterTuples = interpreter.distinctSet(afterTuples); // 去重
             let compared = [], // 把比对过的index存入，防止重复比对消耗资源
                 intersected = [];
             for (let i = 0, len = beforeTuples.length; i < len; i++) {
@@ -476,12 +487,29 @@ const interpreter = {
                 'tuples': intersected
             };
         },
-        crossjoin: function (relas, expression, positions) { // 笛卡尔乘积
+        crossjoin: function (relas, expression, positions) { // 广义笛卡尔乘积
             let [after, before] = relas,
-                [afterPos, selfPos, beforePos] = positions;
+                [afterPos, selfPos, beforePos] = positions,
+                bv = basicView,
+                beforeAttrs = before['attrs'],
+                beforeTuples = before['tuples'],
+                afterAttrs = after['attrs'],
+                afterTuples = after['tuples'],
+                joinedAttrs = beforeAttrs.concat(afterAttrs), // 先把属性名连接起来
+                crossJoined = [];
+            for (let i = 0, len = beforeTuples.length; i < len; i++) {
+                let tuple = beforeTuples[i];
+                for (let j = 0, len2 = afterTuples.length; j < len2; j++) {
+                    let tuple2 = afterTuples[j];
+                    crossJoined.push(tuple.concat(tuple2));
+                }
+            }
             console.log(`(${counter})crossjoin executed:`, expression, before, after);
             counter++;
-            return before;
+            return {
+                'attrs': joinedAttrs,
+                'tuples': crossJoined
+            };
         },
         dividedby: function (relas, expression, positions) { // 除法
             let [after, before] = relas,
