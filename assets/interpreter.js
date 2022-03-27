@@ -234,7 +234,7 @@ const interpreter = {
                     oprtFunc = this.operatorFuncs[oprt], // 操作符的函数
                     oprtType = this.oprtTypes[oprt], // 操作符是一目还是二目
                     nextZero, nextLogic, nextIsOprt;
-                // 优先找有没有前前项，如果有前一项就是child，取prevPrevPos。如果没有就是relation，取prevPos
+                // 优先找有没有前前项，如果有，那么前一项就是child，取prevPrevPos；如果没有，那么前一项就是relation，取prevPos
                 prevPos = prevPrevPos || (prevPos || 0);
                 if (nextValue instanceof Array) { // 下一项如果是Array，就是child，如果是Object，则为relation
                     [nextZero, nextLogic] = nextValue || []; // 下一项数组的0位，可能是操作符，也可能是运算好的关系（考虑到下一项可能是一目运算）
@@ -289,6 +289,7 @@ const interpreter = {
         return ''; // 匹配不到说明是关系或者非法语句，先暂留空字符串
     },
     distinctSet: function (arr) { // 集合去重
+        arr = Array.from(arr); // 浅拷贝
         for (let i = 0, len = arr.length; i < len; i++) {
             let compare = arr[i];
             for (let j = 0, len2 = arr.length; j < len2; j++) {
@@ -410,17 +411,70 @@ const interpreter = {
         },
         except: function (relas, expression, positions) { // 差集
             let [after, before] = relas,
-                [afterPos, selfPos, beforePos] = positions;
+                [afterPos, selfPos, beforePos] = positions,
+                bv = basicView,
+                beforeAttrs = before['attrs'],
+                beforeTuples = before['tuples'],
+                afterAttrs = after['attrs'],
+                afterTuples = after['tuples'];
+            if (!interpreter.arrEquals(beforeAttrs, afterAttrs)) { // 先看看属性列是不是一致的
+                throw `[Pos:${beforePos},${afterPos}] ${bv.getLang('interpreter > exceptError.attrsNotEqual')}`;
+            }
+            beforeTuples = interpreter.distinctSet(beforeTuples); // 去重
+            afterTuples = interpreter.distinctSet(afterTuples); // 去重
+            let compared = []; // 把比对过的index存入，防止重复比对消耗资源
+            for (let i = 0, len = beforeTuples.length; i < len; i++) {
+                let tuple = beforeTuples[i];
+                for (let j = 0, len2 = afterTuples.length; j < len2; j++) {
+                    if (compared.includes(j)) continue; // 比对过的跳过
+                    let tuple2compare = afterTuples[j];
+                    if (interpreter.arrEquals(tuple, tuple2compare)) {
+                        beforeTuples.splice(i, 1); // 左结合关系中删除和右结合关系共有的元组
+                        compared.push(j);
+                        i--;
+                        len--;
+                    }
+                }
+            }
             console.log(`(${counter})except executed:`, expression, before, after);
             counter++;
-            return before;
+            return {
+                'attrs': beforeAttrs,
+                'tuples': beforeTuples
+            };
         },
         intersect: function (relas, expression, positions) { // 交集
             let [after, before] = relas,
-                [afterPos, selfPos, beforePos] = positions;
+                [afterPos, selfPos, beforePos] = positions,
+                bv = basicView,
+                beforeAttrs = before['attrs'],
+                beforeTuples = before['tuples'],
+                afterAttrs = after['attrs'],
+                afterTuples = after['tuples'];
+            if (!interpreter.arrEquals(beforeAttrs, afterAttrs)) { // 先看看属性列是不是一致的
+                throw `[Pos:${beforePos},${afterPos}] ${bv.getLang('interpreter > exceptError.attrsNotEqual')}`;
+            }
+            beforeTuples = interpreter.distinctSet(beforeTuples); // 去重
+            afterTuples = interpreter.distinctSet(afterTuples); // 去重
+            let compared = [], // 把比对过的index存入，防止重复比对消耗资源
+                intersected = [];
+            for (let i = 0, len = beforeTuples.length; i < len; i++) {
+                let tuple = beforeTuples[i];
+                for (let j = 0, len2 = afterTuples.length; j < len2; j++) {
+                    if (compared.includes(j)) continue; // 比对过的跳过
+                    let tuple2compare = afterTuples[j];
+                    if (interpreter.arrEquals(tuple, tuple2compare)) {
+                        intersected.push(tuple);
+                        compared.push(j);
+                    }
+                }
+            }
             console.log(`(${counter})intersect executed:`, expression, before, after);
             counter++;
-            return before;
+            return {
+                'attrs': beforeAttrs,
+                'tuples': intersected
+            };
         },
         crossjoin: function (relas, expression, positions) { // 笛卡尔乘积
             let [after, before] = relas,
