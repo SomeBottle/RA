@@ -265,23 +265,40 @@ const relationView = { // 关系表相关的视图
                         name = parentThumb.getAttribute('data-name'), // 获得关系名
                         csvBtn = foot.querySelector('.csvBtn'), // 获得csv按钮
                         delBtn = foot.querySelector('.delBtn'), // 获得删除按钮
+                        nameBtn = foot.querySelector('.nameBtn'), // 获得改名按钮
                         editCSV = () => {
                             bv.close();
                             nameInput.value = name; // 填充关系名
                             bv.nameInputChecker(); // 触发编辑
                             delBtn.removeEventListener('click', delRela, false);
                             csvBtn.removeEventListener('click', editCSV, false);
+                            nameBtn.removeEventListener('click', chName, false);
                         },
                         delRela = () => {
                             if (confirm(bv.getLang('relationView > relation.delConfirm'))) {
                                 delBtn.removeEventListener('click', delRela, false);
                                 csvBtn.removeEventListener('click', editCSV, false);
+                                nameBtn.removeEventListener('click', chName, false);
                                 relaObj.x(name).del(); // 删除关系表
                                 parentThumb.remove(); // 重新渲染
                             }
-                        }
+                        },
+                        chName = () => {
+                            let newName = prompt(bv.getLang('relationView > relationItem.changeName'), name);
+                            if (newName && newName.notEmpty()) {
+                                let [success, msg] = relaObj.x(name).chName(newName);
+                                if (success) {
+                                    parentThumb.setAttribute('data-name', newName);
+                                    nameBtn.innerText = newName;
+                                    name = newName;
+                                } else {
+                                    bv.notice(bv.getLang(`relationView > ${msg}`));
+                                }
+                            }
+                        };
                     csvBtn.addEventListener('click', editCSV, false); // 绑定csv按钮点击事件
                     delBtn.addEventListener('click', delRela, false); // 绑定删除按钮点击事件
+                    nameBtn.addEventListener('click', chName, false); // 绑定改名按钮点击事件
                     parentThumb.querySelector('#modifyBtn').onclick = rv.modify; // 绑定关系缩略图点击事件
                 })(foot); // 采用闭包以防止可能的问题
             }

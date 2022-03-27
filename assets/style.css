@@ -432,6 +432,10 @@ textarea {
     color: #6f0000;
 }
 
+.singleThumb .nameBtn {
+    color: #cdcdcd;
+}
+
 .algebraForm {
     position: relative;
     top: 50%;

@@ -50,6 +50,16 @@ const Relations = function () { // 关系表处理构造函数(关系名)
         relationBase[this.name]['tuples'][row][col] = val;
         this.save(); // 存入本地存储
     }
+    this.chName = function (newName) { // 改变关系表名(新名)
+        let name = this.name;
+        if (relationBase.hasOwnProperty(newName)) {
+            return [false, 'relation.nameRepeat'];
+        }
+        relationBase[newName] = relationBase[name];
+        delete relationBase[name];
+        this.save();
+        return [true, null];
+    }
     this.moveTuple = function (row, targetRow) { // 移动元组(关系名,行,目标行)
         let name = this.name,
             tuples = relationBase[name]['tuples'],
