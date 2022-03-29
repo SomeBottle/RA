@@ -31,11 +31,13 @@
     "interpreter": {
         "syntaxError.parenthesisLeft": "语法错误：括号未闭合",
         "referenceError.notDefined": "未定义的指令",
+        "referenceError.noSuchAttr": "关系中没有这个属性",
         "operatorError.lackRelation": "运算操作缺少关系",
+        "operatorError.lackLogic": "运算操作缺少逻辑表达式",
         "operatorError.wrongLogic": "逻辑表达式错误",
-        "operatorError.noSuchAttr": "关系中没有这个属性",
         "unionError.attrsNotEqual": "用于并集的关系属性不一致",
-        "exceptError.attrsNotEqual": "用于差集的关系属性不一致"
+        "exceptError.attrsNotEqual": "用于差集的关系属性不一致",
+        "logicError.incomparable": "用于比较运算的项目不可比"
     },
     "notice": {
         "relation.nameRequired": "关系名不能为空",

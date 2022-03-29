@@ -1,6 +1,9 @@
 /* 关系代数解释器 */
 'use strict';
 /* 这里写一个小记记录一下这个破解释器的原理，以防以后忘记!( ・∀・)っ■
+    * 本解释器有两个作用：
+        1. 解释用户输入的语句
+        2. 解释语句中大括号内的**逻辑表达式**
     0. 注意事项：使用和运算符同名的关系时一定要用括号括起来！
         【例】A UNION EXCEPT ×
              A UNION (EXCEPT) √
@@ -19,6 +22,7 @@
             - 是文本，能找到对应操作符，记录操作符(operator)
                 * 注意这里还有一种情况就是关系名和操作符重名，虽然这里会被认为是操作符，但在后续分析中其仍会被筛出来。（当然我是非常不建议关系名这样写，自己都容易搞混）
             - 是文本，能找到对应关系，记录关系(relation)
+            - 是文本，能在指定关系中找到对应逻辑部分(logicexp) (仅限逻辑表达式的解释)
             - 是数组，记作子语句(child)，同时子语句作为树的分支，传给branchParser函数进行运算分析
         上面第三步可以说是解析括号的核心了，branchParser最开始就又会调用flattenTree，而flattenTree遇到当前分支中的child就又会再次调用branchParser，循环往复调用直到最内层的括号。最后由内至外一层一层传出运算结果。
         这也是为什么这个函数叫flattenTree（树展平）了，当所有括号内语句被运算完后在最表层数组只会留下运算好的关系，到最后整个树里就只有关系而没有括号了（也就是把括号全部算出来，只剩下一层）。
@@ -39,6 +43,8 @@
             (0) 构造结果数组result
             (1) 如果当前项目(i)是子语句运算结果或现有关系(都是关系)：
                 - 将当前结果推入结果数组result
+            (1-1) 如果当前项目(i)是关系中的逻辑部分(logicexp) (仅限逻辑表达式的解释)
+                - 将属性推入结果数组result
             (2) 如果当前项目(i)是运算符(operator)：
                 - 是双目运算：
                     * 先取出当前项在分支中的前一项(i-1)和后一项(i+1)
@@ -91,6 +97,17 @@
         - SomeBottle 2022.3.24
 */
 const interpreter = {
+    logicOperators: { // 逻辑表达式运算符
+        'gt': [/^>$/, /^gt$/i, /^大于$/],
+        'lt': [/^<$/, /^lt$/i, /^小于$/],
+        'ge': [/^>=$/, /^ge$/i, /^大于等于$/],
+        'le': [/^<=$/, /^le$/i, /^小于等于$/],
+        'eq': [/^=$/, /^eq$/i, /^等于$/],
+        'neq': [/^<>$/, /^!=$/, /^neq$/i, /^不等于$/],
+        'not': [/^┐$/, /^not$/i, /^非$/],
+        'and': [/^∧$/, /^and$/i, /^与$/, /^且$/],
+        'or': [/^∨$/, /^or$/i, /^或$/]
+    },
     operators: { // 语法正则匹配
         'select': [/^SELECT\{([\s\S]+?)\}$/i, /^选择\{([\s\S]+?)\}$/, /^σ\{([\s\S]+?)\}$/], // 选择
         'project': [/^PROJECT\{(.+?)\}$/i, /^投影\{(.+?)\}$/, /^π\{(.+?)\}$/], // 投影
@@ -117,7 +134,16 @@ const interpreter = {
         'thetajoin': 2,
         'naturaljoin': 2,
         'select': 1,
-        'project': 1
+        'project': 1,
+        'gt': 2,
+        'lt': 2,
+        'ge': 2,
+        'le': 2,
+        'eq': 2,
+        'neq': 2,
+        'not': 1,
+        'and': 2,
+        'or': 2
     },
     diver: function (arr, depth) { // 根据深度返回树的分支
         let pointer = arr;
@@ -134,19 +160,29 @@ const interpreter = {
         }
         return pointer;
     },
-    understand: function (statements) { // 简单树形化语句
-        console.time("understand");
+    treeMaker: function (statements) { // 简单树形化语句
         let tree = [], // 语句树
             depth = 0,
+            masking = false, // masking=true时不会记录任何指令，用于单独处理大括号{}
             strBuffer = '',
             posBuffer = -1, // 储存当前指针位置
             bv = basicView,
             bufferer = (chr, ind = 0) => { // 将字符连成字符串
+                let noBreak = !(/\s/).test(chr) && !['(', ')'].includes(chr);
                 // 没有遇到空字符或者括号就算同一节字符串
-                if (chr && !(/\s/).test(chr) && !['(', ')'].includes(chr)) {
+                if (chr === '{') {
+                    masking = true; // 碰到左大括号就开启屏蔽
+                } else if (chr === '}') {
+                    masking = false;
+                }
+                if (masking && !noBreak) { // 屏蔽状态下遇到括号和空格要加入字符串
+                    strBuffer = strBuffer + chr;
+                }
+                // 遇到空格/换行或者括号就说明一段字符串连接结束
+                if (chr && noBreak) {
                     strBuffer = strBuffer + chr;
                     if (posBuffer === -1) posBuffer = ind; // 储存当前字符串的起始位置
-                } else if (strBuffer) { // 一小段字符串连接完成
+                } else if (strBuffer && !masking) { // 一小段字符串连接完成
                     let branch = this.diver(tree, depth);
                     branch.push({
                         command: strBuffer,
@@ -167,11 +203,15 @@ const interpreter = {
         }
         bufferer(false); // 清空缓冲区
         if (depth !== 0) throw bv.getLang('interpreter > syntaxError.parenthesisLeft'); // 括号未闭合错误
-        console.log(tree);
-        console.log(this.branchParser(tree)); // 解析树语句
-        console.timeEnd("understand");
+        return tree;
     },
-    flattenTree: function (tree) { // 分析语句，最后输出结果只剩一层
+    understand: function (statements) {
+        let tree = this.treeMaker(statements); // 树形化
+        //console.log(tree);
+        let result = this.branchParser(tree); // 解析树语句
+        //console.log(result);
+    },
+    flattenTree: function (tree, logicRela) { // 分析语句，最后输出结果只剩一层
         let treeLen = tree.length,
             bv = basicView,
             result = []; // 每一项为[操作类型,值,原项目]
@@ -179,17 +219,22 @@ const interpreter = {
             let item = tree[i];
             if (item instanceof Array) { // 如果是数组，就相当于括号，则递归
                 let { pos } = this.dig(item, true); // 尝试挖出子语句的开头位置
-                result.push(['child', this.branchParser(item), item, pos]); // child的值就是关系
+                result.push(['child', this.branchParser(item, logicRela), item, pos]); // child的值就是关系
             } else {
                 let { command, pos } = item,
-                    oprt = this.findOperator(command); // 找到操作符
+                    operatorsObj = logicRela ? this.logicOperators : this.operators,
+                    oprt = this.findOperator(command, operatorsObj); // 找到运算符
                 if (!oprt) {
-                    let relation = relaObj.x(command).base;
-                    if (relation) { // 如果是关系
-                        relation = this.distinctTuple(relation);
-                        result.push(['relation', relation, command, pos]);
+                    if (logicRela) { // 逻辑表达式分析模式
+                        result.push(['logicexp', command, command, pos]);
                     } else {
-                        throw `[Pos: ${pos}] ${bv.getLang('interpreter > referenceError.notDefined')}: ${command}`; // 找不到关系的错误
+                        let relation = relaObj.x(command).base;
+                        if (relation) { // 如果是关系
+                            relation = this.distinctTuple(relation);
+                            result.push(['relation', relation, command, pos]);
+                        } else {
+                            throw `[Pos: ${pos}] ${bv.getLang('interpreter > referenceError.notDefined')}: ${command}`; // 找不到关系的错误
+                        }
                     }
                 } else { // 操作符有效
                     result.push(['operator', oprt, command, pos]);
@@ -222,10 +267,11 @@ const interpreter = {
         }
         return pointer;
     },
-    branchParser: function (branch) { // 分析树分支
-        let flatted = this.flattenTree(branch), // 展平树（将括号内的子语句运算完成）
+    branchParser: function (branch, logicRela = false) { // 分析树分支(分支,关系内容)
+        let flatted = this.flattenTree(branch, logicRela), // 展平树（将括号内的子语句运算完成）
             branchLen = flatted.length,
             bv = basicView,
+            usableTypes = ['logicexp', 'relation', 'child'],
             result = [];
         for (let i = 0; i < branchLen; i++) {
             // [类型(操作符operator,子关系child,关系relation),值,原语句,原语句起始位置]
@@ -234,34 +280,41 @@ const interpreter = {
                 let [oprt, logic] = value, // [操作符,逻辑表达式]
                     [, , , prevPrevPos] = flatted[i - 2] || [],
                     [prevType, prevValue, , prevPos] = flatted[i - 1] || [], // 前一项，二元运算需要用到
-                    prevItemUsable = ['child', 'relation'].includes(prevType), // 前一项是否可用(二目运算要用)
+                    prevItemUsable = usableTypes.includes(prevType), // 前一项是否可用(二目运算要用)
                     [nextType, nextValue, , nextPos] = flatted[i + 1] || [[], []], // 获得下一项，这一项无论一元还是二元，都是需要的
-                    nextItemUsable = ['child', 'relation'].includes(nextType), // 下一项是否作为关系可用
-                    probableRela = relaObj.x(origin).base, // 可能是关系
-                    oprtFunc = this.operatorFuncs[oprt], // 操作符的函数
-                    oprtType = this.oprtTypes[oprt], // 操作符是一目还是二目
-                    nextZero, nextLogic, nextIsOprt;
+                    nextItemUsable = usableTypes.includes(nextType), // 下一项是否作为关系可用
+                    nextZero,
+                    nextLogic,
+                    nextIsOprt,
+                    probableRela;
+                if (logicRela) { // 在解释逻辑表达式
+                    logic = logicRela; // 将指定关系传入oprtFunc
+                } else {
+                    probableRela = relaObj.x(origin).base; // 可能是关系
+                }
+                let oprtFunc = this.operatorFuncs[oprt], // 操作符的函数
+                    oprtType = this.oprtTypes[oprt]; // 操作符是一目还是二目
                 // 优先找有没有前前项，如果有，那么前一项就是child，取prevPrevPos；如果没有，那么前一项就是relation，取prevPos
                 prevPos = prevPrevPos || (prevPos || 0);
                 if (nextValue instanceof Array) { // 下一项如果是Array，就是child，如果是Object，则为relation
                     [nextZero, nextLogic] = nextValue || []; // 下一项数组的0位，可能是操作符，也可能是运算好的关系（考虑到下一项可能是一目运算）
-                    nextIsOprt = this.oprtTypes[nextZero] === 1; // （考虑到下一项可能是一目运算）
+                    nextIsOprt = (this.oprtTypes[nextZero] === 1); // （考虑到下一项可能是一目运算）
                 } else {
                     nextZero = nextValue; // 下一项是relation，直接赋值nextValue
                 }
                 if (oprtType === 2 && prevItemUsable && (nextItemUsable || nextIsOprt)) {
                     // 二目运算（要求左右边要有项目）
-                    let leftRela = result.pop(); // 当前操作符的左结合项刚好是result的最后一项
-                    if (nextZero instanceof Object) { // 下一项是运算好的关系
-                        let rightRela = nextZero;
-                        result.push(oprtFunc([rightRela, leftRela], logic, [nextPos, originPos, prevPos])); // 将下一项关系和前一项运算结果放入result
-                    } else { // 下一项是一目操作符！
+                    let leftItem = result.pop(); // 当前操作符的左结合项刚好是result的最后一项
+                    if (nextZero instanceof Object || nextType == 'logicexp') { // 下一项是运算好的关系或者逻辑部分
+                        let rightItem = nextZero;
+                        result.push(oprtFunc([rightItem, leftItem], logic, [nextPos, originPos, prevPos])); // 将下一项关系和前一项运算结果放入result
+                    } else if (nextType == 'operator') { // 下一项是一目操作符！
                         let [nextNextType, nextNextValue, , nextNextPos] = flatted[i + 2] || [], // 操作符就牵扯到下下一项
-                            [nextRightRela] = nextNextValue,
-                            nextNextItemUsable = ['child', 'relation'].includes(nextNextType); // 下下一项是否作为关系可用
+                            [nextRightItem] = nextNextValue,
+                            nextNextItemUsable = usableTypes.includes(nextNextType); // 下下一项是否作为关系可用
                         if (nextNextItemUsable) {
-                            let rightRela = this.operatorFuncs[nextZero]([nextRightRela], nextLogic, [nextNextPos, nextPos]); // 先把下一项的一目运算结果计算出来
-                            result.push(oprtFunc([rightRela, leftRela], logic, [nextPos, originPos, prevPos])); // 再把结果带入二目运算
+                            let rightRela = this.operatorFuncs[nextZero]([nextRightItem], nextLogic, [nextNextPos, nextPos]); // 先把下一项的一目运算结果计算出来
+                            result.push(oprtFunc([rightRela, leftItem], logic, [nextPos, originPos, prevPos])); // 再把结果带入二目运算
                             i = i + 1; // 再跳过一项
                         } else {
                             throw `[Pos:${nextNextPos}] ${bv.getLang('interpreter > operatorError.lackRelation')}: ${nextZero}`; // 操作符错误
@@ -280,14 +333,14 @@ const interpreter = {
                 }
             } else { // child和relation返回的都是关系，一致处理
                 // 多层括号的问题主要就出现在这里，详细看dig函数的注释
-                result.push(this.dig(value)); // 关系直接推入结果列表
+                result.push(this.dig(value)); // 关系/属性直接推入结果列表
             }
         }
         return result; // 最后返回的应该是一个运算出的关系结果
     },
-    findOperator: function (str) { // 寻找语句匹配的操作
-        for (let i in this.operators) {
-            let item = this.operators[i];
+    findOperator: function (str, oprtsObj) { // 寻找语句匹配的操作
+        for (let i in oprtsObj) {
+            let item = oprtsObj[i];
             for (let j = 0, len = item.length; j < len; j++) {
                 let matching = str.match(item[j]);
                 if (matching) {
@@ -340,6 +393,16 @@ const interpreter = {
             return false;
         }
     },
+    selectJudge: function (logic, tuples, attrs, selfPos) {
+        // SELECT逻辑表达式运算(逻辑表达式,元组集合,属性列,原运算符的位置) (返回TRUE/FALSE)
+        let logicTree = interpreter.treeMaker(logic);
+        let result = interpreter.branchParser(logicTree, {
+            parentPos: selfPos,
+            attrs: attrs,
+            tuples: tuples
+        });
+        console.log('logic result: ', result);
+    },
     operatorFuncs: {
         // 操作符对应的函数，这些函数返回的全是计算好的关系(函数传参说明见文件顶部注释)
         select: function (relas, expression, positions) { // 选择
@@ -347,7 +410,13 @@ const interpreter = {
                 [afterPos, selfPos, beforePos] = positions,
                 comma = expression.split(','), // 逻辑表达式逗号分割
                 selected = after,
+                attrs = selected['attrs'],
+                tuples = selected['tuples'],
                 bv = basicView;
+            // TESTING CODE
+            interpreter.selectJudge(expression, tuples, attrs, selfPos);
+            // TESTING CODE END
+            /*
             for (let i = 0, len = comma.length; i < len; i++) {
                 let item = comma[i].trim(),
                     // ATTR = 'VALUE'
@@ -372,6 +441,7 @@ const interpreter = {
                     throw `[Pos:${selfPos}] ${bv.getLang('interpreter > operatorError.wrongLogic')}: ${item}`;
                 }
             }
+            */
             console.log(`(${counter})select executed:`, selected);
             counter++;
             return selected;
@@ -390,7 +460,7 @@ const interpreter = {
             for (let i = 0, len = comma.length; i < len; i++) {
                 let item = comma[i].trim(),
                     attrIndex = relation['attrs'].indexOf(item);
-                if (attrIndex === -1) throw `[Pos:${afterPos}] ${bv.getLang('interpreter > operatorError.noSuchAttr')}: ${item}`;
+                if (attrIndex === -1) throw `[Pos:${afterPos}] ${bv.getLang('interpreter > referenceError.noSuchAttr')}: ${item}`;
                 projectedAttrs.push(attrs[attrIndex]);
                 for (let j = 0; j < colLen; j++) {
                     projectedTuples[j].push(tuples[j][attrIndex]);
@@ -552,6 +622,243 @@ const interpreter = {
             console.log(`(${counter})naturaljoin executed:`, expression, before, after);
             counter++;
             return before;
+        },
+        // 下方为逻辑运算符函数
+        gt: function (relas, relaObj, positions) { // 大于
+            let { parentPos, attrs, tuples } = relaObj,
+                [afterPos, selfPos, beforePos] = positions,
+                result = [],
+                bv = basicView;
+            if (isStr(relas)) { // 判断是不是都是字符串，用于进行比较运算的两项必须是属性或者数值
+                let [after, before] = relas,
+                    beforeInd = attrs.indexOf(before),
+                    afterInd = attrs.indexOf(after);
+                for (let i = 0, len = tuples.length; i < len; i++) {
+                    let tuple = tuples[i],
+                        beforeVal = tuple[beforeInd],
+                        afterVal = tuple[afterInd];
+                    if ((beforeVal && afterVal && beforeVal > afterVal) ||
+                        (beforeVal && beforeVal > Number(after)) ||
+                        (afterVal && Number(before) > afterVal) ||
+                        (Number(before) > Number(after))) {
+                        result.push(i);
+                    }
+                }
+            } else {
+                throw `[Pos:${parentPos} logicPos:${beforePos},${afterPos}] ${bv.getLang('interpreter > logicError.incomparable')}`;
+            }
+            console.log(`gt executed:`, result);
+            return {
+                selected: result
+            };
+        },
+        lt: function (relas, relaObj, positions) { // 小于
+            let { parentPos, attrs, tuples } = relaObj,
+                [afterPos, selfPos, beforePos] = positions,
+                result = [],
+                bv = basicView;
+            if (isStr(relas)) { // 判断是不是都是字符串，用于进行比较运算的两项必须是属性或者数值
+                let [after, before] = relas,
+                    beforeInd = attrs.indexOf(before),
+                    afterInd = attrs.indexOf(after);
+                for (let i = 0, len = tuples.length; i < len; i++) {
+                    let tuple = tuples[i],
+                        beforeVal = tuple[beforeInd],
+                        afterVal = tuple[afterInd];
+                    if ((beforeVal && afterVal && beforeVal < afterVal) ||
+                        (beforeVal && beforeVal < Number(after)) ||
+                        (afterVal && Number(before) < afterVal) ||
+                        (Number(before) < Number(after))) {
+                        result.push(i);
+                    }
+                }
+            } else {
+                throw `[Pos:${parentPos} logicPos:${beforePos},${afterPos}] ${bv.getLang('interpreter > logicError.incomparable')}`;
+            }
+            console.log(`lt executed:`, result);
+            return {
+                selected: result
+            };
+        },
+        ge: function (relas, relaObj, positions) { // 大于等于
+            let { parentPos, attrs, tuples } = relaObj,
+                [afterPos, selfPos, beforePos] = positions,
+                result = [],
+                bv = basicView;
+            if (isStr(relas)) { // 判断是不是都是字符串，用于进行比较运算的两项必须是属性或者数值
+                let [after, before] = relas,
+                    beforeInd = attrs.indexOf(before),
+                    afterInd = attrs.indexOf(after);
+                for (let i = 0, len = tuples.length; i < len; i++) {
+                    let tuple = tuples[i],
+                        beforeVal = tuple[beforeInd],
+                        afterVal = tuple[afterInd];
+                    if ((beforeVal && afterVal && beforeVal >= afterVal) ||
+                        (beforeVal && beforeVal == extStr(after)) ||
+                        (afterVal && extStr(before) == afterVal) ||
+                        (beforeVal && beforeVal >= Number(after)) ||
+                        (afterVal && Number(before) >= afterVal) ||
+                        (Number(before) >= Number(after)) ||
+                        before == after) {
+                        result.push(i);
+                    }
+                }
+            } else {
+                throw `[Pos:${parentPos} logicPos:${beforePos},${afterPos}] ${bv.getLang('interpreter > logicError.incomparable')}`;
+            }
+            console.log(`ge executed:`, result);
+            return {
+                selected: result
+            };
+        },
+        le: function (relas, relaObj, positions) { // 小于等于
+            let { parentPos, attrs, tuples } = relaObj,
+                [afterPos, selfPos, beforePos] = positions,
+                result = [],
+                bv = basicView;
+            if (isStr(relas)) { // 判断是不是都是字符串，用于进行比较运算的两项必须是属性或者数值
+                let [after, before] = relas,
+                    beforeInd = attrs.indexOf(before),
+                    afterInd = attrs.indexOf(after);
+                for (let i = 0, len = tuples.length; i < len; i++) {
+                    let tuple = tuples[i],
+                        beforeVal = tuple[beforeInd],
+                        afterVal = tuple[afterInd];
+                    if ((beforeVal && afterVal && beforeVal <= afterVal) ||
+                        (beforeVal && beforeVal == extStr(after)) ||
+                        (afterVal && extStr(before) == afterVal) ||
+                        (beforeVal && beforeVal <= Number(after)) ||
+                        (afterVal && Number(before) <= afterVal) ||
+                        (Number(before) <= Number(after)) ||
+                        before == after) {
+                        result.push(i);
+                    }
+                }
+            } else {
+                throw `[Pos:${parentPos} logicPos:${beforePos},${afterPos}] ${bv.getLang('interpreter > logicError.incomparable')}`;
+            }
+            console.log(`le executed:`, result);
+            return {
+                selected: result
+            };
+        },
+        eq: function (relas, relaObj, positions) { // 等于
+            let { parentPos, attrs, tuples } = relaObj,
+                [afterPos, selfPos, beforePos] = positions,
+                result = [],
+                bv = basicView;
+            if (isStr(relas)) { // 判断是不是都是字符串，用于进行比较运算的两项必须是属性或者数值
+                let [after, before] = relas,
+                    beforeInd = attrs.indexOf(before),
+                    afterInd = attrs.indexOf(after);
+                for (let i = 0, len = tuples.length; i < len; i++) {
+                    let tuple = tuples[i],
+                        beforeVal = tuple[beforeInd],
+                        afterVal = tuple[afterInd];
+                    if ((beforeVal && afterVal && beforeVal == afterVal) ||
+                        (beforeVal && beforeVal == extStr(after)) ||
+                        (afterVal && extStr(before) == afterVal) ||
+                        (beforeVal && beforeVal == Number(after)) ||
+                        (afterVal && Number(before) == afterVal) ||
+                        before == after) {
+                        result.push(i);
+                    }
+                }
+            } else {
+                throw `[Pos:${parentPos} logicPos:${beforePos},${afterPos}] ${bv.getLang('interpreter > logicError.incomparable')}`;
+            }
+            console.log(`eq executed:`, result);
+            return {
+                selected: result
+            };
+        },
+        neq: function (relas, relaObj, positions) { // 不等于
+            let { parentPos, attrs, tuples } = relaObj,
+                [afterPos, selfPos, beforePos] = positions,
+                result = [],
+                bv = basicView;
+            if (isStr(relas)) { // 判断是不是都是字符串，用于进行比较运算的两项必须是属性或者数值
+                let [after, before] = relas,
+                    beforeInd = attrs.indexOf(before),
+                    afterInd = attrs.indexOf(after);
+                for (let i = 0, len = tuples.length; i < len; i++) {
+                    let tuple = tuples[i],
+                        beforeVal = tuple[beforeInd],
+                        afterVal = tuple[afterInd];
+                    if (!((beforeVal && afterVal && beforeVal == afterVal) ||
+                        (beforeVal && beforeVal == extStr(after)) ||
+                        (afterVal && extStr(before) == afterVal) ||
+                        (beforeVal && beforeVal == Number(after)) ||
+                        (afterVal && Number(before) == afterVal) ||
+                        before == after)) {
+                        result.push(i);
+                    }
+                }
+            } else {
+                throw `[Pos:${parentPos} logicPos:${beforePos},${afterPos}] ${bv.getLang('interpreter > logicError.incomparable')}`;
+            }
+            console.log(`neq executed:`, result);
+            return {
+                selected: result
+            };
+        },
+        not: function (relas, relaObj, positions) { // 非
+            let [after, before] = relas,
+                { parentPos, attrs, tuples } = relaObj,
+                [afterPos, selfPos, beforePos] = positions,
+                result = [],
+                bv = basicView;
+            if (after instanceof Object) { // not右边接的肯定要是运算好的对象
+                let keys = [...tuples.keys()],
+                    selected = after.selected;
+                result = keys.filter(x => !selected.includes(x)); // 做补集运算
+            } else {
+                throw `[Pos:${parentPos} logicPos:${afterPos}] ${bv.getLang('interpreter > operatorError.lackLogic')}`;
+            }
+            console.log(`not executed:`, result);
+            return {
+                selected: result
+            };
+        },
+        and: function (relas, relaObj, positions) { // 与/且
+            let [afterPos, selfPos, beforePos] = positions,
+                { parentPos, attrs, tuples } = relaObj,
+                bv = basicView,
+                result;
+            if (isAllObj(relas)) {
+                let [after, before] = relas,
+                    selectedAfter = after.selected,
+                    selectedBefore = before.selected;
+                result = selectedBefore.filter(x => selectedAfter.includes(x)); // 与运算就是求交集
+            } else {
+                throw `[Pos:${parentPos} logicPos:${beforePos},${afterPos}] ${bv.getLang('interpreter > operatorError.lackLogic')}`;
+            }
+            console.log(`and executed:`, result);
+            return {
+                selected: result
+            };
+        },
+        or: function (relas, relaObj, positions) { // 或
+            let [afterPos, selfPos, beforePos] = positions,
+                { parentPos, attrs, tuples } = relaObj,
+                bv = basicView,
+                result;
+            if (isAllObj(relas)) {
+                let [after, before] = relas,
+                    selectedAfter = after.selected,
+                    selectedBefore = before.selected;
+                result = selectedAfter;
+                for (let i = 0, len = selectedBefore.length; i < len; i++) {
+                    let ind = selectedBefore[i];
+                    if (!result.includes(ind)) result.push(ind); // 或其实就像并集
+                }
+            } else {
+                throw `[Pos:${parentPos} logicPos:${beforePos},${afterPos}] ${bv.getLang('interpreter > operatorError.lackLogic')}`;
+            }
+            console.log(`or executed:`, result);
+            return {
+                selected: result
+            };
         }
     }
 };

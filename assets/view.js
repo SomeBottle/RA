@@ -513,6 +513,7 @@ const playView = { // 演示视图
 
 // Testing code below! 下方为测试代码
 
+/*
 setTimeout(() => {
     s('.algebraInput').value = `PROJECT{NAME}(EXCEPT)
 EXCEPT
@@ -526,7 +527,10 @@ PROJECT{NAME}(
 UNION
 STUDENT`;
 }, 500);
-
+*/
+setTimeout(() => {
+    s('.algebraInput').value = `SELECT{COURSEID > 3}(STUDENT)`;
+}, 500);
 /*
 playView.show();
 

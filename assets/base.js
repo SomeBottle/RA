@@ -25,6 +25,24 @@ const zip = function () { // 模仿一下Python的zip函数
     } else {
         apply();
     }
+}, isStr = function (strArr) { // 判断一个或多个值是不是字符串
+    strArr = Array.isArray(strArr) ? strArr : [strArr];
+    for (let i = 0, len = strArr.length; i < len; i++) {
+        if (typeof strArr[i] !== 'string') return false;
+    }
+    return true;
+}, isAllObj = function (arr) { // 判断一个或多个值是不是数组
+    for (let i = 0, len = arr.length; i < len; i++) {
+        if (!(arr[i] instanceof Object)) return false;
+    }
+    return true;
+}, extStr = function (strArr) {// 将字符串由'str'提取为str
+    strArr = Array.isArray(strArr) ? strArr : [strArr];
+    for (let i = 0, len = strArr.length; i < len; i++) {
+        let matching = strArr[i].match(/^'(.+?)'$/);
+        if (matching) strArr[i] = matching[1];
+    }
+    return strArr;
 }
 /*在字符串原型链上加个寻找模板占位符的方法*/
 String.prototype.findTp = function () {
