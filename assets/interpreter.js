@@ -22,7 +22,7 @@
             - 是文本，能找到对应操作符，记录操作符(operator)
                 * 注意这里还有一种情况就是关系名和操作符重名，虽然这里会被认为是操作符，但在后续分析中其仍会被筛出来。（当然我是非常不建议关系名这样写，自己都容易搞混）
             - 是文本，能找到对应关系，记录关系(relation)
-            - 是文本，能在指定关系中找到对应逻辑部分(logicexp) (仅限逻辑表达式的解释)
+            - 是文本，记为关系表达式(relaexp) (仅限逻辑表达式的解释)
             - 是数组，记作子语句(child)，同时子语句作为树的分支，传给branchParser函数进行运算分析
         上面第三步可以说是解析括号的核心了，branchParser最开始就又会调用flattenTree，而flattenTree遇到当前分支中的child就又会再次调用branchParser，循环往复调用直到最内层的括号。最后由内至外一层一层传出运算结果。
         这也是为什么这个函数叫flattenTree（树展平）了，当所有括号内语句被运算完后在最表层数组只会留下运算好的关系，到最后整个树里就只有关系而没有括号了（也就是把括号全部算出来，只剩下一层）。
@@ -43,7 +43,7 @@
             (0) 构造结果数组result
             (1) 如果当前项目(i)是子语句运算结果或现有关系(都是关系)：
                 - 将当前结果推入结果数组result
-            (1-1) 如果当前项目(i)是关系中的逻辑部分(logicexp) (仅限逻辑表达式的解释)
+            (1-1) 如果当前项目(i)是逻辑中的关系表达式(relaexp) (仅限逻辑表达式的解释)
                 - 将属性推入结果数组result
             (2) 如果当前项目(i)是运算符(operator)：
                 - 是双目运算：
@@ -61,7 +61,7 @@
                           oprtFunc([
                               后一项(i+1),前一项(result最后一个元素)
                             ],
-                            逻辑表达式,
+                            逻辑表达式(逻辑表达式解释的场景下这里是一个关系),
                             [
                                 后一项语句的位置,运算符语句的位置,前一项语句的位置
                             ]
@@ -226,7 +226,7 @@ const interpreter = {
                     oprt = this.findOperator(command, operatorsObj); // 找到运算符
                 if (!oprt) {
                     if (logicRela) { // 逻辑表达式分析模式
-                        result.push(['logicexp', command, command, pos]);
+                        result.push(['relaexp', command, command, pos]);
                     } else {
                         let relation = relaObj.x(command).base;
                         if (relation) { // 如果是关系
@@ -271,7 +271,7 @@ const interpreter = {
         let flatted = this.flattenTree(branch, logicRela), // 展平树（将括号内的子语句运算完成）
             branchLen = flatted.length,
             bv = basicView,
-            usableTypes = ['logicexp', 'relation', 'child'],
+            usableTypes = ['relaexp', 'relation', 'child'],
             result = [];
         for (let i = 0; i < branchLen; i++) {
             // [类型(操作符operator,子关系child,关系relation),值,原语句,原语句起始位置]
@@ -305,7 +305,7 @@ const interpreter = {
                 if (oprtType === 2 && prevItemUsable && (nextItemUsable || nextIsOprt)) {
                     // 二目运算（要求左右边要有项目）
                     let leftItem = result.pop(); // 当前操作符的左结合项刚好是result的最后一项
-                    if (nextZero instanceof Object || nextType == 'logicexp') { // 下一项是运算好的关系或者逻辑部分
+                    if (nextZero instanceof Object || nextType == 'relaexp') { // 下一项是运算好的关系或者逻辑表达式中的关系表达式
                         let rightItem = nextZero;
                         result.push(oprtFunc([rightItem, leftItem], logic, [nextPos, originPos, prevPos])); // 将下一项关系和前一项运算结果放入result
                     } else if (nextType == 'operator') { // 下一项是一目操作符！
@@ -395,56 +395,37 @@ const interpreter = {
     },
     selectJudge: function (logic, tuples, attrs, selfPos) {
         // SELECT逻辑表达式运算(逻辑表达式,元组集合,属性列,原运算符的位置) (返回TRUE/FALSE)
-        let logicTree = interpreter.treeMaker(logic);
-        let result = interpreter.branchParser(logicTree, {
-            parentPos: selfPos,
-            attrs: attrs,
-            tuples: tuples
-        });
+        let logicTree = interpreter.treeMaker(logic),
+            parsed = interpreter.branchParser(logicTree, {
+                parentPos: selfPos,
+                attrs: attrs,
+                tuples: tuples
+            })[0],
+            result = [];
+        if (parsed && parsed['selected']) { // 运算成功
+            let selected = parsed['selected'];
+            for (let i = 0, len = selected.length; i < len; i++) {
+                result.push(tuples[selected[i]]); // 将indexes数组转换为对应的元组数组
+            }
+        } else {
+            throw `[Pos: ${selfPos}] ${basicView.getLang('interpreter > logicError.noResult')}`;
+        }
         console.log('logic result: ', result);
+        return result;
     },
     operatorFuncs: {
         // 操作符对应的函数，这些函数返回的全是计算好的关系(函数传参说明见文件顶部注释)
         select: function (relas, expression, positions) { // 选择
             let [after, before] = relas,
                 [afterPos, selfPos, beforePos] = positions,
-                comma = expression.split(','), // 逻辑表达式逗号分割
-                selected = after,
-                attrs = selected['attrs'],
-                tuples = selected['tuples'],
-                bv = basicView;
-            // TESTING CODE
-            interpreter.selectJudge(expression, tuples, attrs, selfPos);
-            // TESTING CODE END
-            /*
-            for (let i = 0, len = comma.length; i < len; i++) {
-                let item = comma[i].trim(),
-                    // ATTR = 'VALUE'
-                    matchingStr = item.match(/^(\S+?)\s*?=\s*?'([\s\S]+?)'$/),
-                    // ATTR = NUM
-                    matchingNum = item.match(/^(\S+?)\s*?=\s*?([0-9.]+?)$/),
-                    matching = matchingStr || matchingNum;
-                if (matching) {
-                    let [, attr, value] = matching, // 属性名和值
-                        attrIndex = selected['attrs'].indexOf(attr),
-                        tuples = selected['tuples'],
-                        result = [];
-                    if (attrIndex === -1) throw `[Pos:${afterPos}] ${bv.getLang('interpreter > operatorError.noSuchAttr')}: ${attr}`; // 没有这个属性
-                    for (let j = 0, len = tuples.length; j < len; j++) { // 选择出元组
-                        let tuple = tuples[j];
-                        if (tuple[attrIndex] === value) {
-                            result.push(tuple);
-                        }
-                    }
-                    selected['tuples'] = result; // 更新为选择的元组(去重后)
-                } else {
-                    throw `[Pos:${selfPos}] ${bv.getLang('interpreter > operatorError.wrongLogic')}: ${item}`;
-                }
-            }
-            */
-            console.log(`(${counter})select executed:`, selected);
+                relation = after,
+                attrs = relation['attrs'],
+                tuples = relation['tuples'],
+                selected = interpreter.selectJudge(expression, tuples, attrs, selfPos);
+            relation['tuples'] = selected;
+            console.log(`(${counter})select executed:`, relation);
             counter++;
-            return selected;
+            return relation;
         },
         project: function (relas, expression, positions) { // 投影
             let [after, before] = relas,

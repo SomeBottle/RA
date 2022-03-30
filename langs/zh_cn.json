@@ -37,7 +37,8 @@
         "operatorError.wrongLogic": "逻辑表达式错误",
         "unionError.attrsNotEqual": "用于并集的关系属性不一致",
         "exceptError.attrsNotEqual": "用于差集的关系属性不一致",
-        "logicError.incomparable": "用于比较运算的项目不可比"
+        "logicError.incomparable": "用于比较运算的项目不可比",
+        "logicError.noResult": "逻辑表达式错误，无法运算出结果"
     },
     "notice": {
         "relation.nameRequired": "关系名不能为空",
