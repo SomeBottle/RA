@@ -4,9 +4,9 @@ var s = (selector, all = false) => all ? document.querySelectorAll(selector) : d
 
 const zip = function () { // 模仿一下Python的zip函数
     let args = Array.from(arguments);
-    return args.length > 0 ? args.reduce((prev, curr) => {
+    return args.length > 0 ? args.reduce((prev, curr, currInd) => {
         return prev.map((v, i) => {
-            if (!(v instanceof Array)) v = [v];
+            if (currInd === 1) v = [v];
             v.push(curr[i]);
             return v;
         })

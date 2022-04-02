@@ -209,7 +209,7 @@ const interpreter = {
         let tree = this.treeMaker(statements); // 树形化
         //console.log(tree);
         let result = this.branchParser(tree); // 解析树语句
-        //console.log(result);
+        console.log(result);
     },
     flattenTree: function (tree, logicRela) { // 分析语句，最后输出结果只剩一层
         let treeLen = tree.length,
@@ -361,9 +361,10 @@ const interpreter = {
             let compare = arr[i];
             for (let j = 0, len2 = arr.length; j < len2; j++) {
                 if (i == j) continue;
-                let equal = arr[j].every((val, ind) => {
-                    return val === compare[ind];
-                })
+                let item = arr[j],
+                    equal = Array.isArray(item) ? arr[j].every((val, ind) => {
+                        return val === compare[ind];
+                    }) : item === compare;
                 if (equal) {
                     arr.splice(j, 1);
                     i--;
@@ -379,7 +380,7 @@ const interpreter = {
         let arr1Len = arr1.length,
             arr2Len = arr2.length;
         if (arr1Len === arr2Len) {
-            let existInds = []; // 防止[1,2,2,2,2]=[1,2,3,4]这样的情况出现
+            let existInds = []; // 防止[1,2,2,2]=[1,2,3,4]这样的情况出现
             for (let i = 0; i < arr1Len; i++) {
                 let find = arr2.indexOf(arr1[i]);
                 if (find !== -1 && !existInds.includes(find)) {
@@ -410,8 +411,25 @@ const interpreter = {
         } else {
             throw `[Pos: ${selfPos}] ${basicView.getLang('interpreter > logicError.noResult')}`;
         }
-        console.log('logic result: ', result);
         return result;
+    },
+    extractCols: function (relation, colInds) { // 根据index提取关系中的某一列或多列值
+        let attrs = relation['attrs'],
+            tuples = relation['tuples'], colLen = tuples.length, // 一列几个元组的分量
+            projectedTuples = new Array(colLen).fill().map(v => []),
+            projectedAttrs = [];
+        colInds = Array.isArray(colInds) ? colInds : [colInds];
+        for (let j = 0, len = colInds.length; j < len; j++) {
+            let ind = colInds[j];
+            projectedAttrs.push(attrs[ind]);
+            for (let i = 0; i < colLen; i++) {
+                projectedTuples[i].push(tuples[i][ind]);
+            }
+        }
+        return {
+            attrs: projectedAttrs,
+            tuples: projectedTuples
+        };
     },
     operatorFuncs: {
         // 操作符对应的函数，这些函数返回的全是计算好的关系(函数传参说明见文件顶部注释)
@@ -432,21 +450,15 @@ const interpreter = {
                 [afterPos, selfPos, beforePos] = positions,
                 comma = expression.split(','), // 逻辑表达式逗号分割
                 relation = after,
-                attrs = relation['attrs'],
-                tuples = relation['tuples'],
-                colLen = tuples.length, // 一列几个元组的分量
-                projectedAttrs = [],
-                projectedTuples = new Array(colLen).fill().map(v => []), // 构造新的集合
+                projectedInds = [],
                 bv = basicView;
             for (let i = 0, len = comma.length; i < len; i++) {
                 let item = comma[i].trim(),
                     attrIndex = relation['attrs'].indexOf(item);
                 if (attrIndex === -1) throw `[Pos:${afterPos}] ${bv.getLang('interpreter > referenceError.noSuchAttr')}: ${item}`;
-                projectedAttrs.push(attrs[attrIndex]);
-                for (let j = 0; j < colLen; j++) {
-                    projectedTuples[j].push(tuples[j][attrIndex]);
-                }
+                projectedInds.push(attrIndex);
             }
+            let { attrs: projectedAttrs, tuples: projectedTuples } = interpreter.extractCols(relation, projectedInds);
             relation['attrs'] = projectedAttrs;
             // PROJECT运算后可能有重复元组，别忘了去重操作
             relation['tuples'] = interpreter.distinctArr(projectedTuples);
@@ -564,10 +576,55 @@ const interpreter = {
         },
         dividedby: function (relas, expression, positions) { // 除法
             let [after, before] = relas,
-                [afterPos, selfPos, beforePos] = positions;
-            console.log(`(${counter})dividedby executed:`, expression, before, after);
-            counter++;
-            return before;
+                [afterPos, selfPos, beforePos] = positions,
+                bv = basicView,
+                beforeAttrs = before['attrs'],
+                beforeTuples = before['tuples'],
+                beforeColLen = beforeTuples.length,
+                afterAttrs = after['attrs'],
+                afterTuples = after['tuples'],
+                afterColLen = afterTuples.length,
+                beforeLeft = [], // 左边关系除共有属性余下的属性列
+                rightSharing = [], // 找到左右关系共有属性列在右边的indexes
+                leftSharing = [], // 找到左右关系共有属性列在左边的indexes
+                matchTimes = {}; // 元组匹配次数{左边元组下标:匹配右边元组的下标元组}
+            for (let i = 0, len = beforeAttrs.length; i < len; i++) {
+                let attr = beforeAttrs[i],
+                    rightInd = afterAttrs.indexOf(attr);
+                if (rightInd !== -1) {
+                    rightSharing.push(rightInd);
+                    leftSharing.push(i);
+                } else {
+                    beforeLeft.push(i);
+                }
+            }
+            let { attrs: rightSharingAttrs, tuples: rightSharingTuples } = interpreter.extractCols(after, rightSharing);
+            for (let i = 0; i < beforeColLen; i++) {
+                let tuple = beforeTuples[i],
+                    sharing = leftSharing.map(index => tuple[index]); // 取出左边共有属性列在当前元组的值
+                for (let j = 0, len = rightSharingTuples.length; j < len; j++) {
+                    let rightTuple = rightSharingTuples[j];
+                    if (interpreter.arrEquals(sharing, rightTuple)) { // 找到左边和右边共有的部分
+                        let tuplesLeft = beforeLeft.map(index => tuple[index]), // 取出左边非共有属性的值
+                            key = tuplesLeft.join('_');
+                        if (!matchTimes.hasOwnProperty(key)) matchTimes[key] = [new Set(), []];
+                        matchTimes[key][0].add(j);
+                        matchTimes[key][1].push(i);
+                    }
+                }
+            }
+            let selected = [];
+            for (let i in matchTimes) {
+                let item = matchTimes[i],
+                    [matchSet, matchIndexes] = item;
+                if (matchSet.size === afterColLen) { // 找到象集对应的元组
+                    selected.push(beforeTuples[matchIndexes[0]]); // 这里只取第一个，因为这些下标对应的是同一个元组，相当于去重了
+                }
+            }
+            return interpreter.extractCols({
+                'attrs': beforeAttrs,
+                'tuples': selected
+            }, beforeLeft);
         },
         outerjoin: function (relas, expression, positions) { // 外连接
             let [after, before] = relas,

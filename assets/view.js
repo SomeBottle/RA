@@ -529,7 +529,7 @@ STUDENT`;
 }, 500);
 */
 setTimeout(() => {
-    s('.algebraInput').value = `SELECT{COURSEID > 3}(STUDENT)`;
+    s('.algebraInput').value = `TEST1 DIVIDEDBY TEST2`;
 }, 500);
 /*
 playView.show();
